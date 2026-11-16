@@ -106,8 +106,8 @@ Evaluation strictly follows **Corvo Procurement Policy v5.0** in order:
 | **2** | **Contract PO** | Eligible active contract with remaining ceiling $\ge$ requirement value | `PURCHASE_ORDER` | `CONTRACT_PO` | Issue PO to contract supplier at contract rate |
 | **3** | **Emergency PO** | Requisition marked `Emergency` and value $\le$ ₹5,00,000 | `PURCHASE_ORDER` | `EMERGENCY_PO` | Rank 1 preferred supplier; emergency approval required |
 | **4** | **Spot PO** | Normal urgency, value $\le$ ₹2,00,000 (or ₹3,00,000 in v5.1) AND purchased in last 365 days | `PURCHASE_ORDER` | `SPOT_PO` | Lowest-price supplier from recent PO history |
-| **5** | **RFQ** | Normal urgency, value between Spot limit and ₹25,00,000 (or ceiling exhausted) | `SOURCING_REQUEST` | `RFQ` | Suggest 3 suppliers from preferred ranking |
-| **6** | **RFP** | Normal urgency, value $>$ ₹25,00,000 | `SOURCING_REQUEST` | `RFP` | Suggest 5 suppliers; formal RFP process |
+| **5** | **RFQ** | Normal urgency, value between Spot limit and ₹10,00,000 (or ceiling exhausted, or small item never bought in 365d) | `SOURCING_REQUEST` | `RFQ` | Suggest 3 suppliers from preferred ranking |
+| **6** | **RFP** | Normal urgency, value $\ge$ ₹10,00,000 | `SOURCING_REQUEST` | `RFP` | Suggest 5 suppliers; formal RFP process |
 
 ### Clubbing Rules (Clause 2.2)
 - Same resolved item code and same plant.
