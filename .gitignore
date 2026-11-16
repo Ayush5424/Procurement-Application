@@ -5,6 +5,12 @@ task_kit/
 # Local tools
 .tools/
 
+# Local databases
+data/
+**/data/
+*.mv.db
+*.trace.db
+
 # Environment files
 .env
 .env.*
