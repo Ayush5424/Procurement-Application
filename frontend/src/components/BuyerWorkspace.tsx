@@ -9,20 +9,17 @@ import {
 } from '../types';
 import {
   CheckCircle,
-  AlertTriangle,
   Upload,
   Download,
   FileText,
   Filter,
   Eye,
-  ArrowRight,
-  ShieldAlert,
-  Calendar,
-  Building,
   Check,
   X,
   RefreshCw,
-  Search
+  Search,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 export const BuyerWorkspace: React.FC = () => {
@@ -30,6 +27,9 @@ export const BuyerWorkspace: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Notification Banner
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Selected requirement for detail modal
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export const BuyerWorkspace: React.FC = () => {
   const [showBatchModal, setShowBatchModal] = useState<boolean>(false);
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [batchLoading, setBatchLoading] = useState<boolean>(false);
-  const [batchResultMsg, setBatchResultMsg] = useState<string | null>(null);
+  const [batchResultMsg, setBatchResultMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [showContractModal, setShowContractModal] = useState<boolean>(false);
   const [contractFile, setContractFile] = useState<File | null>(null);
@@ -57,13 +57,20 @@ export const BuyerWorkspace: React.FC = () => {
   const [overrideSupplierId, setOverrideSupplierId] = useState<string>('');
   const [overrideUnitPrice, setOverrideUnitPrice] = useState<string>('');
 
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => (prev?.message === message ? null : prev));
+    }, 5000);
+  };
+
   const loadRequirements = async () => {
     setLoading(true);
     try {
       const data = await api.getRequirements(statusFilter === 'ALL' ? undefined : statusFilter);
       setRequirements(data);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      showNotification('error', 'Unable to load requirements from server.');
     } finally {
       setLoading(false);
     }
@@ -84,8 +91,8 @@ export const BuyerWorkspace: React.FC = () => {
       setOverrideRoute(d.requirement.route);
       setOverrideSupplierId(d.requirement.selectedSupplierId || '');
       setOverrideUnitPrice(d.requirement.unitPrice ? String(d.requirement.unitPrice) : '');
-    } catch (err) {
-      console.error(err);
+    } catch {
+      showNotification('error', 'Unable to load requirement details.');
     } finally {
       setDetailLoading(false);
     }
@@ -98,8 +105,9 @@ export const BuyerWorkspace: React.FC = () => {
       if (detail && detail.requirement.groupId === groupId) {
         setDetail({ ...detail, requirement: updated });
       }
-    } catch (err) {
-      alert('Failed to approve requirement');
+      showNotification('success', `Requirement ${groupId} approved successfully.`);
+    } catch {
+      showNotification('error', `Failed to approve requirement ${groupId}.`);
     }
   };
 
@@ -121,8 +129,9 @@ export const BuyerWorkspace: React.FC = () => {
       setShowOverrideForm(false);
       setOverrideReason('');
       openDetail(selectedGroupId);
-    } catch (err) {
-      alert('Failed to override decision');
+      showNotification('success', `Requirement ${selectedGroupId} successfully overridden.`);
+    } catch {
+      showNotification('error', `Failed to override requirement ${selectedGroupId}.`);
     }
   };
 
@@ -132,10 +141,16 @@ export const BuyerWorkspace: React.FC = () => {
     setBatchResultMsg(null);
     try {
       const rows = await api.processBatchCsv(batchFile, '5.0');
-      setBatchResultMsg(`Successfully processed ${rows.length} PR lines and consolidated requirements!`);
+      setBatchResultMsg({
+        type: 'success',
+        text: `Processed ${rows.length} requisition lines. Requirements evaluated and consolidated.`
+      });
       loadRequirements();
-    } catch (err: any) {
-      setBatchResultMsg('Failed to process batch CSV: ' + err.message);
+    } catch {
+      setBatchResultMsg({
+        type: 'error',
+        text: 'Unable to process batch file. Please ensure the CSV format matches the standard schema.'
+      });
     } finally {
       setBatchLoading(false);
     }
@@ -150,8 +165,8 @@ export const BuyerWorkspace: React.FC = () => {
       a.href = url;
       a.download = 'decisions.csv';
       a.click();
-    } catch (err) {
-      alert('Failed to export decisions CSV');
+    } catch {
+      showNotification('error', 'Unable to export decisions CSV.');
     }
   };
 
@@ -163,8 +178,8 @@ export const BuyerWorkspace: React.FC = () => {
       a.href = url;
       a.download = `preferred_suppliers_${exportDate}.csv`;
       a.click();
-    } catch (err) {
-      alert('Failed to export preferred suppliers CSV');
+    } catch {
+      showNotification('error', 'Unable to export preferred suppliers CSV.');
     }
   };
 
@@ -174,8 +189,8 @@ export const BuyerWorkspace: React.FC = () => {
     try {
       const extracted = await api.uploadContractPdf(contractFile);
       setExtractedContract(extracted);
-    } catch (err: any) {
-      alert('Failed to extract contract: ' + err.message);
+    } catch {
+      showNotification('error', 'Unable to extract contract details from the provided PDF document.');
     } finally {
       setContractLoading(false);
     }
@@ -185,12 +200,12 @@ export const BuyerWorkspace: React.FC = () => {
     if (!extractedContract) return;
     try {
       await api.activateContract(extractedContract);
-      alert(`Contract ${extractedContract.contractId} activated successfully!`);
+      showNotification('success', `Rate Contract ${extractedContract.contractId} activated successfully.`);
       setShowContractModal(false);
       setExtractedContract(null);
       setContractFile(null);
-    } catch (err) {
-      alert('Failed to activate contract');
+    } catch {
+      showNotification('error', 'Failed to activate contract.');
     }
   };
 
@@ -208,26 +223,52 @@ export const BuyerWorkspace: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {notification && (
+        <div
+          className={`p-3 rounded-lg text-xs font-medium flex items-center justify-between border ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border-rose-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <CheckCircle2 size={16} className="text-emerald-600" />
+            ) : (
+              <AlertCircle size={16} className="text-rose-600" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-slate-600"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Top action bar */}
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Buyer Workspace</h2>
-          <p className="text-xs text-slate-500">Review, approve, or override procurement decisions under policy rules.</p>
+          <h2 className="text-lg font-bold text-slate-800">Buyer Workspace</h2>
+          <p className="text-xs text-slate-500">Review, approve, and manage purchase requisitions, rate contracts, and supplier allocations.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setShowBatchModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
           >
             <Upload size={14} /> Process Batch CSV
           </button>
 
           <button
             onClick={() => setShowContractModal(true)}
-            className="bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            className="bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
           >
-            <FileText size={14} /> Add PDF Contract
+            <FileText size={14} /> Register Rate Contract
           </button>
 
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
@@ -240,7 +281,7 @@ export const BuyerWorkspace: React.FC = () => {
             <button
               onClick={handleExportSuppliers}
               className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 transition"
-              title="Export Top 3 Preferred Suppliers as of selected date"
+              title="Export Top Preferred Suppliers as of selected date"
             >
               <Download size={13} /> Export Suppliers CSV
             </button>
@@ -251,27 +292,32 @@ export const BuyerWorkspace: React.FC = () => {
             className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
             title="Refresh list"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={15} />
           </button>
         </div>
       </div>
 
       {/* Filter and search bar */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+      <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200 flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-2">
-          <Filter size={15} className="text-slate-400" />
+          <Filter size={14} className="text-slate-400" />
           <span className="text-xs font-medium text-slate-600">Status:</span>
-          {['ALL', 'PENDING_REVIEW', 'APPROVED', 'OVERRIDDEN'].map(st => (
+          {[
+            { id: 'ALL', label: 'All' },
+            { id: 'PENDING_REVIEW', label: 'Pending Review' },
+            { id: 'APPROVED', label: 'Approved' },
+            { id: 'OVERRIDDEN', label: 'Overridden' }
+          ].map(st => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1 text-xs rounded-full font-medium transition ${
-                statusFilter === st
+              key={st.id}
+              onClick={() => setStatusFilter(st.id)}
+              className={`px-3 py-1 text-xs rounded-md font-medium transition ${
+                statusFilter === st.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
               }`}
             >
-              {st.replace('_', ' ')}
+              {st.label}
             </button>
           ))}
         </div>
@@ -283,26 +329,26 @@ export const BuyerWorkspace: React.FC = () => {
             placeholder="Search group, item, plant, route..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-64"
+            className="pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-64 text-slate-800"
           />
         </div>
       </div>
 
       {/* Requirements Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
-                <th className="py-3 px-4">Group ID</th>
+                <th className="py-3 px-4">Req. Group</th>
                 <th className="py-3 px-4">Item Code</th>
                 <th className="py-3 px-4">Plant</th>
-                <th className="py-3 px-4">Total Qty</th>
-                <th className="py-3 px-4">Req. Value (₹)</th>
+                <th className="py-3 px-4">Quantity</th>
+                <th className="py-3 px-4">Estimated Value</th>
                 <th className="py-3 px-4">Decision</th>
-                <th className="py-3 px-4">Route</th>
-                <th className="py-3 px-4">Supplier / Sourcing</th>
-                <th className="py-3 px-4">PO ID</th>
+                <th className="py-3 px-4">Assigned Route</th>
+                <th className="py-3 px-4">Supplier Allocation</th>
+                <th className="py-3 px-4">Consolidated PO</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -315,13 +361,13 @@ export const BuyerWorkspace: React.FC = () => {
               ) : filteredRequirements.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-12 text-center text-slate-400">
-                    No requirements found. Click "Process Batch CSV" above to upload PRs!
+                    No requirements found. Upload a requisition batch to begin evaluation.
                   </td>
                 </tr>
               ) : (
                 filteredRequirements.map(req => (
                   <tr key={req.groupId} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 px-4 font-bold text-blue-600 cursor-pointer" onClick={() => openDetail(req.groupId)}>
+                    <td className="py-3 px-4 font-bold text-blue-700 cursor-pointer" onClick={() => openDetail(req.groupId)}>
                       {req.groupId}
                     </td>
                     <td className="py-3 px-4 font-medium text-slate-800">
@@ -337,27 +383,27 @@ export const BuyerWorkspace: React.FC = () => {
                       ₹{req.requirementValue?.toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
-                        req.decision === 'PO' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${
+                        req.decision === 'PO' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
                       }`}>
                         {req.decision}
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                      <span className="font-mono text-[11px] text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
                         {req.route}
                       </span>
                     </td>
                     <td className="py-3 px-4 max-w-xs truncate" title={req.selectedSupplierId || req.suggestedSupplierIds}>
                       {req.selectedSupplierId ? (
-                        <span className="font-semibold text-emerald-700">{req.selectedSupplierId} (₹{req.unitPrice})</span>
+                        <span className="font-semibold text-emerald-800">{req.selectedSupplierId} (₹{req.unitPrice})</span>
                       ) : req.suggestedSupplierIds ? (
-                        <span className="text-amber-700 text-[11px]">{req.suggestedSupplierIds}</span>
+                        <span className="text-amber-800 text-[11px]">{req.suggestedSupplierIds}</span>
                       ) : (
-                        <span className="text-slate-400">None</span>
+                        <span className="text-slate-400">Manual Sourcing</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono font-medium text-indigo-600">
+                    <td className="py-3 px-4 font-mono font-medium text-indigo-700">
                       {req.poId || '—'}
                     </td>
                     <td className="py-3 px-4">
@@ -368,14 +414,14 @@ export const BuyerWorkspace: React.FC = () => {
                           ? 'bg-purple-50 text-purple-700 border border-purple-200'
                           : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
-                        {req.status}
+                        {req.status === 'PENDING_REVIEW' ? 'Pending Review' : req.status}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right space-x-1">
                       <button
                         onClick={() => openDetail(req.groupId)}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-xs transition"
-                        title="View Full Detail"
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-xs transition font-medium"
+                        title="View Details"
                       >
                         <Eye size={12} className="inline mr-1" /> View
                       </button>
@@ -383,7 +429,7 @@ export const BuyerWorkspace: React.FC = () => {
                         <button
                           onClick={() => handleApprove(req.groupId)}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-semibold transition"
-                          title="One-click Approve"
+                          title="Approve Requirement"
                         >
                           Approve
                         </button>
@@ -397,16 +443,16 @@ export const BuyerWorkspace: React.FC = () => {
         </div>
       </div>
 
-      {/* Requirement Detail Drawer / Modal */}
+      {/* Requirement Detail Drawer */}
       {selectedGroupId && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex justify-end">
           <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
             {/* Modal Header */}
             <div className="p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-lg text-slate-800">{selectedGroupId}</h3>
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                  <h3 className="font-bold text-base text-slate-800">{selectedGroupId}</h3>
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
                     detail?.requirement.decision === 'PO' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                   }`}>
                     {detail?.requirement.decision}
@@ -421,9 +467,9 @@ export const BuyerWorkspace: React.FC = () => {
               </div>
               <button
                 onClick={() => setSelectedGroupId(null)}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -434,14 +480,14 @@ export const BuyerWorkspace: React.FC = () => {
               ) : detail ? (
                 <>
                   {/* Decision & Valuation Summary Card */}
-                  <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-4 space-y-2">
-                    <h4 className="font-bold text-blue-900 text-sm flex items-center gap-1.5">
-                      <CheckCircle size={16} className="text-blue-600" /> Procurement Decision Details
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle size={15} className="text-blue-600" /> Procurement Decision Summary
                     </h4>
-                    <p className="text-xs text-slate-700">
-                      <span className="font-semibold">Reason:</span> {detail.requirement.reason}
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      <span className="font-semibold text-slate-800">Policy Basis:</span> {detail.requirement.reason}
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-blue-100 text-[11px]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200 text-[11px]">
                       <div>
                         <span className="text-slate-500 block">Total Quantity</span>
                         <span className="font-bold text-slate-800">{detail.requirement.totalQuantity}</span>
@@ -455,12 +501,12 @@ export const BuyerWorkspace: React.FC = () => {
                         <span className="font-bold text-blue-700">₹{detail.requirement.requirementValue?.toLocaleString('en-IN')}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block">PO Consolidation</span>
+                        <span className="text-slate-500 block">Consolidated PO</span>
                         <span className="font-bold text-indigo-700">{detail.requirement.poId || 'None'}</span>
                       </div>
                     </div>
                     {detail.requirement.valuationExplanation && (
-                      <div className="text-[11px] text-slate-500 bg-white p-2 rounded border border-blue-100">
+                      <div className="text-[11px] text-slate-600 bg-white p-2 rounded border border-slate-200 mt-2">
                         {detail.requirement.valuationExplanation}
                       </div>
                     )}
@@ -469,7 +515,7 @@ export const BuyerWorkspace: React.FC = () => {
                   {/* Clubbed PR Lines */}
                   <div className="space-y-2">
                     <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                      Original PR Lines Clubbed in this Requirement ({detail.mappedPrLines.length})
+                      Associated Requisition Lines ({detail.mappedPrLines.length})
                     </h4>
                     <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
                       <table className="w-full text-left text-xs">
@@ -482,7 +528,7 @@ export const BuyerWorkspace: React.FC = () => {
                         <tbody className="divide-y divide-slate-100">
                           {detail.mappedPrLines.map(line => (
                             <tr key={line.id}>
-                              <td className="py-2 px-3 font-semibold text-blue-600">{line.prNo}</td>
+                              <td className="py-2 px-3 font-semibold text-blue-700">{line.prNo}</td>
                               <td className="py-2 px-3">{line.prLine}</td>
                             </tr>
                           ))}
@@ -495,7 +541,7 @@ export const BuyerWorkspace: React.FC = () => {
                   {detail.preferredSuppliers && detail.preferredSuppliers.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                        Preferred Supplier Ranking & Reference Price
+                        Preferred Supplier Rankings
                       </h4>
                       <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
                         <table className="w-full text-left text-xs">
@@ -505,7 +551,7 @@ export const BuyerWorkspace: React.FC = () => {
                               <th className="py-2 px-3">Supplier</th>
                               <th className="py-2 px-3">Score</th>
                               <th className="py-2 px-3">POs (548d)</th>
-                              <th className="py-2 px-3">Contract</th>
+                              <th className="py-2 px-3">Rate Contract</th>
                               <th className="py-2 px-3">On-Time</th>
                               <th className="py-2 px-3">Quality</th>
                               <th className="py-2 px-3">Ref. Price</th>
@@ -513,7 +559,7 @@ export const BuyerWorkspace: React.FC = () => {
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {detail.preferredSuppliers.map(s => (
-                              <tr key={s.supplier.supplierId} className={s.rank === 1 ? 'bg-emerald-50/50' : ''}>
+                              <tr key={s.supplier.supplierId} className={s.rank === 1 ? 'bg-emerald-50/40' : ''}>
                                 <td className="py-2 px-3 font-bold text-slate-800">#{s.rank}</td>
                                 <td className="py-2 px-3 font-medium">
                                   {s.supplier.name} <span className="text-slate-400 text-[10px]">({s.supplier.supplierId})</span>
@@ -532,17 +578,17 @@ export const BuyerWorkspace: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Audit Trail */}
+                  {/* Action History */}
                   {detail.auditRecords && detail.auditRecords.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                        Action & Audit Trail
+                        Action History
                       </h4>
                       <div className="space-y-2">
                         {detail.auditRecords.map(a => (
                           <div key={a.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                             <div className="flex justify-between font-semibold text-slate-800">
-                              <span>Action: {a.action} by {a.actor}</span>
+                              <span>{a.action} by {a.actor}</span>
                               <span className="text-slate-400 text-[10px]">{a.timestamp}</span>
                             </div>
                             <p className="text-slate-600 mt-1">{a.overrideReason}</p>
@@ -559,23 +605,23 @@ export const BuyerWorkspace: React.FC = () => {
 
                   {/* Override Form */}
                   {showOverrideForm ? (
-                    <form onSubmit={handleOverrideSubmit} className="bg-purple-50/60 border border-purple-200 rounded-xl p-4 space-y-3">
+                    <form onSubmit={handleOverrideSubmit} className="bg-slate-50 border border-slate-300 rounded-xl p-4 space-y-3">
                       <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-purple-900 text-sm">Override Decision</h4>
+                        <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Manual Decision Override</h4>
                         <button type="button" onClick={() => setShowOverrideForm(false)} className="text-xs text-slate-500 hover:text-slate-800">Cancel</button>
                       </div>
 
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                          Written Reason for Override (Mandatory)
+                          Commercial Justification (Required)
                         </label>
                         <textarea
                           required
                           value={overrideReason}
                           onChange={e => setOverrideReason(e.target.value)}
-                          placeholder="State the commercial or operational justification for overriding this policy decision..."
+                          placeholder="State the operational or commercial justification for overriding this policy decision..."
                           rows={2}
-                          className="w-full text-xs p-2.5 border border-slate-300 rounded-lg outline-none focus:border-purple-500 bg-white"
+                          className="w-full text-xs p-2.5 border border-slate-300 rounded-lg outline-none focus:border-blue-500 bg-white text-slate-800"
                         />
                       </div>
 
@@ -634,22 +680,22 @@ export const BuyerWorkspace: React.FC = () => {
 
                       <button
                         type="submit"
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg text-xs transition"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-xs transition"
                       >
-                        Submit & Save Override
+                        Submit Override
                       </button>
                     </form>
                   ) : (
                     <div className="flex gap-2 pt-4 border-t border-slate-200">
                       <button
                         onClick={() => handleApprove(detail.requirement.groupId)}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition shadow-sm"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
                       >
-                        <Check size={16} /> Approve System Decision
+                        <Check size={15} /> Approve Decision
                       </button>
                       <button
                         onClick={() => setShowOverrideForm(true)}
-                        className="px-4 bg-slate-100 hover:bg-purple-50 hover:text-purple-700 text-slate-700 font-semibold py-2.5 rounded-lg text-xs transition border border-slate-300"
+                        className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-xs transition border border-slate-300"
                       >
                         Override...
                       </button>
@@ -664,20 +710,19 @@ export const BuyerWorkspace: React.FC = () => {
 
       {/* Batch Processing Modal */}
       {showBatchModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                <Upload size={18} className="text-blue-600" /> Process PR Batch CSV
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Upload size={16} className="text-blue-600" /> Process Requisition Batch
               </h3>
               <button onClick={() => setShowBatchModal(false)} className="text-slate-400 hover:text-slate-700">
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600">
-              Upload a PR batch CSV (such as <code className="bg-slate-100 px-1 py-0.5 rounded text-blue-600 font-mono">sample_pr_batch.csv</code>).
-              The decision engine will club requirements, value them, check contract ceilings, evaluate policy rules, consolidate POs, and record results.
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Upload a purchase requisition batch CSV to evaluate demand requirements, apply applicable rate contracts, assign procurement routes, and consolidate purchase orders.
             </p>
 
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer">
@@ -685,10 +730,10 @@ export const BuyerWorkspace: React.FC = () => {
                 type="file"
                 accept=".csv"
                 onChange={e => setBatchFile(e.target.files?.[0] || null)}
-                className="w-full text-xs"
+                className="w-full text-xs text-slate-700"
               />
               {batchFile && (
-                <div className="mt-2 text-xs font-semibold text-emerald-600">
+                <div className="mt-2 text-xs font-semibold text-emerald-700">
                   Selected: {batchFile.name} ({(batchFile.size / 1024).toFixed(1)} KB)
                 </div>
               )}
@@ -696,9 +741,9 @@ export const BuyerWorkspace: React.FC = () => {
 
             {batchResultMsg && (
               <div className={`p-3 rounded-lg text-xs font-medium ${
-                batchResultMsg.includes('Successfully') ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                batchResultMsg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
               }`}>
-                {batchResultMsg}
+                {batchResultMsg.text}
               </div>
             )}
 
@@ -714,7 +759,7 @@ export const BuyerWorkspace: React.FC = () => {
                 disabled={!batchFile}
                 onClick={handleExportDecisionsCsv}
                 className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-                title="Download decisions.csv directly"
+                title="Download decisions CSV directly"
               >
                 <Download size={14} /> Export CSV
               </button>
@@ -723,22 +768,21 @@ export const BuyerWorkspace: React.FC = () => {
         </div>
       )}
 
-      {/* PDF Contract Upload Modal */}
+      {/* Rate Contract Registration Modal */}
       {showContractModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-xl w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-                <FileText size={18} className="text-indigo-600" /> Ingest Signed Contract PDF
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <FileText size={16} className="text-blue-600" /> Register Rate Contract
               </h3>
               <button onClick={() => setShowContractModal(false)} className="text-slate-400 hover:text-slate-700">
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600">
-              Upload a signed contract PDF (e.g. <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-indigo-600">RC-2026-031.pdf</code>).
-              Apache PDFBox will extract contract terms and line items for buyer review before activation.
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Upload a signed rate contract PDF. The system will extract contract terms, validity dates, ceiling value, and schedule line rates for review before activation.
             </p>
 
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center">
@@ -746,14 +790,14 @@ export const BuyerWorkspace: React.FC = () => {
                 type="file"
                 accept=".pdf"
                 onChange={e => setContractFile(e.target.files?.[0] || null)}
-                className="w-full text-xs"
+                className="w-full text-xs text-slate-700"
               />
               <button
                 disabled={!contractFile || contractLoading}
                 onClick={handleContractPdfUpload}
-                className="mt-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition"
+                className="mt-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition"
               >
-                {contractLoading ? 'Extracting with PDFBox...' : 'Extract Contract Details'}
+                {contractLoading ? 'Extracting Contract Details...' : 'Extract Contract Details'}
               </button>
             </div>
 
@@ -761,13 +805,13 @@ export const BuyerWorkspace: React.FC = () => {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-800 text-sm">Contract: {extractedContract.contractId}</span>
-                  <span className="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded text-[10px]">Valid Extraction</span>
+                  <span className="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded text-[10px]">Document Verified</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-slate-600 text-[11px]">
                   <div>Supplier: <span className="font-semibold text-slate-800">{extractedContract.supplierName} ({extractedContract.supplierId})</span></div>
                   <div>Ceiling: <span className="font-semibold text-slate-800">INR {extractedContract.valueCap?.toLocaleString('en-IN')}</span></div>
-                  <div>Valid: <span className="font-semibold text-slate-800">{extractedContract.startDate} to {extractedContract.endDate}</span></div>
-                  <div>Starting Consumed: <span className="font-semibold text-slate-800">INR 0 (New PDF)</span></div>
+                  <div>Validity: <span className="font-semibold text-slate-800">{extractedContract.startDate} to {extractedContract.endDate}</span></div>
+                  <div>Initial Consumed: <span className="font-semibold text-slate-800">INR 0</span></div>
                 </div>
 
                 <div className="border-t border-slate-200 pt-2">
@@ -775,7 +819,7 @@ export const BuyerWorkspace: React.FC = () => {
                   <div className="max-h-36 overflow-y-auto space-y-1">
                     {extractedContract.lines.map((l, i) => (
                       <div key={i} className="flex justify-between bg-white p-1.5 rounded border border-slate-200 text-[11px]">
-                        <span><b className="text-indigo-600">{l.itemCode}</b> — {l.description}</span>
+                        <span><b className="text-blue-700">{l.itemCode}</b> — {l.description}</span>
                         <span className="font-semibold text-slate-800">₹{l.rate} / {l.uom}</span>
                       </div>
                     ))}
@@ -786,7 +830,7 @@ export const BuyerWorkspace: React.FC = () => {
                   onClick={handleActivateContract}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg text-xs transition"
                 >
-                  Confirm & Activate Contract in System
+                  Confirm & Activate Rate Contract
                 </button>
               </div>
             )}

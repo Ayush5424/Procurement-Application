@@ -8,10 +8,8 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  ListOrdered
+  ListOrdered,
+  X
 } from 'lucide-react';
 
 export const PolicyManagement: React.FC = () => {
@@ -19,6 +17,9 @@ export const PolicyManagement: React.FC = () => {
   const [selectedVersion, setSelectedVersion] = useState<string>('5.0');
   const [rules, setRules] = useState<PolicyRule[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Notification
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Amendment upload / text
   const [amendmentPdf, setAmendmentPdf] = useState<File | null>(null);
@@ -31,6 +32,13 @@ export const PolicyManagement: React.FC = () => {
   const [activating, setActivating] = useState<boolean>(false);
   const [activationSuccess, setActivationSuccess] = useState<string | null>(null);
 
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification(prev => (prev?.message === message ? null : prev));
+    }, 5000);
+  };
+
   const loadPolicies = async () => {
     setLoading(true);
     try {
@@ -39,8 +47,8 @@ export const PolicyManagement: React.FC = () => {
       if (data.length > 0 && !selectedVersion) {
         setSelectedVersion(data[0].versionNumber);
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      showNotification('error', 'Unable to load policy versions.');
     } finally {
       setLoading(false);
     }
@@ -50,8 +58,8 @@ export const PolicyManagement: React.FC = () => {
     try {
       const r = await api.getPolicyRules(ver);
       setRules(r);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      showNotification('error', `Unable to load rules for Policy v${ver}.`);
     }
   };
 
@@ -76,8 +84,8 @@ export const PolicyManagement: React.FC = () => {
       if (prop.effectiveDate) {
         setEffectiveDate(prop.effectiveDate);
       }
-    } catch (err: any) {
-      alert('Failed to parse policy PDF: ' + err.message);
+    } catch {
+      showNotification('error', 'Unable to extract policy amendment from the provided PDF.');
     } finally {
       setParsing(false);
     }
@@ -94,8 +102,8 @@ export const PolicyManagement: React.FC = () => {
       if (prop.effectiveDate) {
         setEffectiveDate(prop.effectiveDate);
       }
-    } catch (err: any) {
-      alert('Failed to parse amendment text: ' + err.message);
+    } catch {
+      showNotification('error', 'Unable to parse policy amendment text.');
     } finally {
       setParsing(false);
     }
@@ -111,27 +119,72 @@ export const PolicyManagement: React.FC = () => {
         description: proposal.title,
         rules: proposal.proposedRules
       });
-      setActivationSuccess(`Policy Version ${activated.versionNumber} successfully activated effective ${effectiveDate}!`);
+      setActivationSuccess(`Policy Version ${activated.versionNumber} successfully activated effective ${effectiveDate}.`);
       loadPolicies();
       setSelectedVersion(activated.versionNumber);
       setProposal(null);
       setAmendmentPdf(null);
       setAmendmentText('');
-    } catch (err: any) {
-      alert('Failed to activate policy: ' + err.message);
+    } catch {
+      showNotification('error', 'Failed to activate policy version.');
     } finally {
       setActivating(false);
     }
   };
 
+  /**
+   * Translates internal condition strings into clean, human-readable criteria.
+   */
+  const formatConditions = (jsonStr: string) => {
+    try {
+      const obj = JSON.parse(jsonStr);
+      const badges: string[] = [];
+      if (obj.itemType) badges.push(`Item Type: ${obj.itemType}`);
+      if (obj.category) badges.push(`Category: ${obj.category}`);
+      if (obj.contractEligible) badges.push('Requires Active Rate Contract with Remaining Ceiling');
+      if (obj.urgency) badges.push(`Urgency: ${obj.urgency}`);
+      if (obj.maxValue) badges.push(`Max Value: ₹${obj.maxValue.toLocaleString('en-IN')}`);
+      if (obj.minValue) badges.push(`Min Value: ₹${obj.minValue.toLocaleString('en-IN')}`);
+      if (obj.requiresPastPurchase365d) badges.push('Requires Purchase History within 365 Days');
+      return badges.length > 0 ? badges.join(' · ') : 'Standard Policy Criteria';
+    } catch {
+      return 'Standard Policy Criteria';
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {notification && (
+        <div
+          className={`p-3 rounded-lg text-xs font-medium flex items-center justify-between border ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border-rose-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <CheckCircle2 size={16} className="text-emerald-600" />
+            ) : (
+              <AlertCircle size={16} className="text-rose-600" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-slate-600"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-800">Policy Management — Policy as Data</h2>
+      <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
+        <h2 className="text-lg font-bold text-slate-800">Procurement Policy Governance</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Procurement policy thresholds, conditions, and rule priorities are stored as versioned data in PostgreSQL.
-          Uploading and approving a policy amendment changes procurement decisions without Java code modifications.
+          View active procurement policy rules, approval thresholds, and route allocations. Upload signed amendments to update thresholds across the organization.
         </p>
       </div>
 
@@ -139,51 +192,51 @@ export const PolicyManagement: React.FC = () => {
         {/* Left column: Policy Versions and Rules Table */}
         <div className="lg:col-span-2 space-y-5">
           {/* Version Selector Bar */}
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-600">Active Versions:</span>
               {policies.map(p => (
                 <button
                   key={p.versionNumber}
                   onClick={() => setSelectedVersion(p.versionNumber)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                     selectedVersion === p.versionNumber
-                      ? 'bg-blue-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
                 >
-                  <ShieldCheck size={14} /> v{p.versionNumber}
-                  <span className="text-[10px] opacity-80">({p.effectiveDate})</span>
+                  <ShieldCheck size={14} /> Version {p.versionNumber}
+                  <span className="text-[10px] opacity-80 font-normal">({p.effectiveDate})</span>
                 </button>
               ))}
             </div>
 
-            <span className="text-xs text-slate-400">
-              Showing rules for <b className="text-slate-800">Version {selectedVersion}</b>
+            <span className="text-xs text-slate-500">
+              Viewing rules for <b className="text-slate-800">Version {selectedVersion}</b>
             </span>
           </div>
 
           {/* Rules Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
             <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 font-semibold text-xs text-slate-700 flex justify-between items-center">
               <span className="flex items-center gap-1.5">
-                <ListOrdered size={15} className="text-blue-600" /> Ordered Policy Decision Rules
+                <ListOrdered size={15} className="text-blue-600" /> Evaluation Hierarchy & Rules
               </span>
-              <span className="text-slate-400 font-normal">First matching rule determines outcome</span>
+              <span className="text-slate-400 font-normal">Evaluated in sequential priority</span>
             </div>
 
             <div className="divide-y divide-slate-100 text-xs">
               {rules.map(rule => (
                 <div key={rule.ruleCode} className="p-4 hover:bg-slate-50/70 transition flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
+                  <div className="w-7 h-7 rounded-full bg-slate-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
                     {rule.priority}
                   </div>
 
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800 text-sm">Clause {rule.ruleCode} — {rule.name}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        rule.outcome === 'PO' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      <span className="font-semibold text-slate-800 text-sm">Clause {rule.ruleCode} — {rule.name}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        rule.outcome === 'PO' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
                       }`}>
                         {rule.outcome}
                       </span>
@@ -192,12 +245,14 @@ export const PolicyManagement: React.FC = () => {
                       </span>
                     </div>
 
-                    <p className="text-slate-600 text-xs">{rule.description}</p>
+                    <p className="text-slate-600 text-xs leading-relaxed">{rule.description}</p>
 
-                    <div className="flex items-center gap-4 text-[11px] text-slate-400 pt-1">
-                      <span>Conditions: <code className="bg-slate-100 text-slate-600 px-1 py-0.5 rounded">{rule.conditionsJson}</code></span>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-1.5">
+                      <span className="bg-slate-50 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                        {formatConditions(rule.conditionsJson)}
+                      </span>
                       {rule.supplierSuggestionCount ? (
-                        <span className="text-indigo-600 font-medium">Suggestions: {rule.supplierSuggestionCount} suppliers</span>
+                        <span className="text-indigo-700 font-medium">Requirement: {rule.supplierSuggestionCount} supplier quotes</span>
                       ) : null}
                     </div>
                   </div>
@@ -207,15 +262,15 @@ export const PolicyManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Right column: Policy Amendment Upload & Guided Change */}
+        {/* Right column: Policy Amendment Upload */}
         <div className="space-y-5">
           {/* Upload Amendment Card */}
-          <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-              <Upload size={16} className="text-blue-600" /> Upload Policy Amendment PDF
+              <Upload size={15} className="text-blue-600" /> Upload Policy Amendment PDF
             </h3>
-            <p className="text-xs text-slate-500">
-              Upload an amendment PDF document (e.g. for the blind test). Apache PDFBox will extract and analyze the rule changes.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Upload a signed procurement policy amendment PDF. The system will extract updated clauses and rule thresholds for review.
             </p>
 
             <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center">
@@ -223,35 +278,35 @@ export const PolicyManagement: React.FC = () => {
                 type="file"
                 accept=".pdf"
                 onChange={e => setAmendmentPdf(e.target.files?.[0] || null)}
-                className="w-full text-xs"
+                className="w-full text-xs text-slate-700"
               />
               <button
                 disabled={!amendmentPdf || parsing}
                 onClick={handleParsePdf}
                 className="mt-3 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white py-2 rounded-lg text-xs font-semibold transition"
               >
-                {parsing ? 'Extracting with PDFBox...' : 'Extract & Preview Amendment'}
+                {parsing ? 'Analyzing Document...' : 'Extract & Preview Amendment'}
               </button>
             </div>
 
             {/* Guided Text Input Alternative */}
             <div className="border-t border-slate-100 pt-3 space-y-2">
               <span className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                <Sparkles size={14} className="text-amber-500" /> Or describe change in text:
+                <FileText size={14} className="text-slate-500" /> Or enter amendment text directly:
               </span>
               <textarea
                 value={amendmentText}
                 onChange={e => setAmendmentText(e.target.value)}
                 placeholder="e.g. Policy Amendment v5.1&#10;Effective Date: 2026-11-19&#10;Spot PO limit increased to INR 3,00,000 for standard items."
                 rows={3}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
+                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg outline-none focus:border-blue-500 bg-slate-50 text-slate-800"
               />
               <button
                 disabled={!amendmentText.trim() || parsing}
                 onClick={handleParseText}
                 className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-xs font-semibold transition"
               >
-                Parse Change Text
+                Parse Amendment Text
               </button>
             </div>
           </div>
@@ -259,41 +314,41 @@ export const PolicyManagement: React.FC = () => {
           {/* Success Banner */}
           {activationSuccess && (
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
-              <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
               <span>{activationSuccess}</span>
             </div>
           )}
 
           {/* Proposal Preview & Activation Card */}
           {proposal && (
-            <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-5 space-y-4 animate-in fade-in duration-200">
+            <div className="bg-slate-50 border border-slate-300 rounded-xl p-5 space-y-4 animate-in fade-in duration-200">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-blue-900 text-sm">Proposed Version: v{proposal.newVersionNumber}</span>
-                <span className="bg-blue-200/60 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded">Ready for Review</span>
+                <span className="font-bold text-slate-800 text-sm">Proposed Version: v{proposal.newVersionNumber}</span>
+                <span className="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded">Ready for Review</span>
               </div>
 
-              <div className="text-xs text-slate-700 whitespace-pre-line bg-white p-3.5 rounded-lg border border-blue-100 leading-relaxed">
+              <div className="text-xs text-slate-700 bg-white p-3.5 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-line">
                 {proposal.plainLanguageExplanation}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                  <Calendar size={13} /> Set Effective Date:
+                  <Calendar size={13} /> Effective Date:
                 </label>
                 <input
                   type="date"
                   value={effectiveDate}
                   onChange={e => setEffectiveDate(e.target.value)}
-                  className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white outline-none"
+                  className="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white outline-none text-slate-800"
                 />
               </div>
 
               <button
                 disabled={activating}
                 onClick={handleActivateNewVersion}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-2.5 rounded-lg text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-semibold py-2.5 rounded-lg text-xs transition shadow-xs flex items-center justify-center gap-1.5"
               >
-                <CheckCircle2 size={16} /> {activating ? 'Activating Policy...' : 'Approve & Activate Policy Version'}
+                <CheckCircle2 size={15} /> {activating ? 'Activating Policy...' : 'Approve & Activate Policy Version'}
               </button>
             </div>
           )}
