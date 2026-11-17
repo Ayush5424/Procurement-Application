@@ -183,6 +183,7 @@ The frontend runs at `http://localhost:5173` (configured with Vite proxy to forw
 
 | Method | Endpoint | Description |
 |---|---|---|
+| `GET` | `/api/health` | Service health check returning UP status and engine identity |
 | `POST` | `/api/chat/message` | Conversational PR intake; parses message and manages session state |
 | `POST` | `/api/chat/confirm` | Confirms draft requisition and persists PR into database |
 | `POST` | `/api/chat/reset` | Clears conversation state and restarts chat session |
@@ -218,20 +219,32 @@ mvn test
 
 ---
 
-## Production Deployment
+## Production Deployment (Render + Neon PostgreSQL)
 
-### Backend Deployment (Render)
-1. Link GitHub repository `Ayush5424/Procurement-Application` to Render.
-2. The included [`render.yaml`](render.yaml) automatically provisions:
-   - Web service using `backend/Dockerfile` on Java 21.
-   - Connected Neon PostgreSQL instance.
-   - Environment variables: `SPRING_PROFILES_ACTIVE=prod`, `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`.
+The application is deployed on Render as **ONE combined Web Service**, serving both the React frontend and Spring Boot REST APIs from a single public URL, backed by an external Neon PostgreSQL database.
 
-### Frontend Deployment (Vercel / Render)
-1. Set Root Directory to `frontend`.
-2. Build Command: `npm run build`
-3. Output Directory: `dist`
-4. Set Environment Variable: `VITE_API_BASE_URL` pointing to the deployed backend URL (e.g. `https://procurement-application-api.onrender.com`).
+### Deployment Highlights
+- **Single Public URL:** React is built and packaged into Spring Boot's static resources. Direct navigation and page refreshes route through Spring Boot's SPA resource handler without CORS or port differences.
+- **Multi-Stage Dockerfile:** The root [`Dockerfile`](Dockerfile) uses Node 20 to build the React frontend, Maven 3.9 + Temurin 21 to build the Spring Boot JAR with static resources, and runs on a lightweight Temurin 21 JRE container.
+- **External Neon PostgreSQL:** Database connection is managed externally on Neon. The backend automatically parses and normalizes standard Neon JDBC and URI connection strings.
+- **Automated Schema & Migrations:** Flyway runs automatically on startup in the `prod` profile, applying migrations (`V1__init_schema.sql`) and seeding master data.
+- **Health Check Endpoint:** Dedicated `/api/health` monitors application availability.
+
+### Steps to Deploy on Render
+
+1. **Create a Blueprint in Render:**
+   - In Render, click **New +** > **Blueprint**.
+   - Connect the repository: `https://github.com/Ayush5424/Procurement-Application`.
+   - Render will detect [`render.yaml`](render.yaml) and configure the `cantill-procurement` Web Service.
+
+2. **Configure Environment Variables:**
+   Provide your Neon PostgreSQL database credentials when prompted:
+   - `SPRING_DATASOURCE_URL`: Your Neon connection string (e.g., `jdbc:postgresql://ep-xyz.aws.neon.tech/neondb?sslmode=require` or direct `postgresql://...`).
+   - `SPRING_DATASOURCE_USERNAME`: Neon database user (optional if embedded in connection string).
+   - `SPRING_DATASOURCE_PASSWORD`: Neon database password (optional if embedded in connection string).
+
+3. **Deploy:**
+   - Click **Apply**. Render will run the multi-stage Docker build, launch the Web Service, verify the `/api/health` health check, and publish your live application.
 
 ---
 
