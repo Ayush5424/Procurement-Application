@@ -21,6 +21,8 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Service
 public class MasterDataService {
@@ -116,6 +118,23 @@ public class MasterDataService {
     }
 
     public void autoImportIfDataAvailable() {
+        // 1. Check if MASTER_DATA_BASE64 environment variable is provided (Render deployment-safe secret)
+        String base64Zip = System.getenv("MASTER_DATA_BASE64");
+        if (base64Zip != null && !base64Zip.isBlank() && itemRepository.count() == 0) {
+            try {
+                log.info("Detected MASTER_DATA_BASE64 environment variable. Importing master data archive...");
+                byte[] decoded = Base64.getDecoder().decode(base64Zip.trim());
+                importFromZip(new ByteArrayInputStream(decoded));
+                if (itemRepository.count() > 0) {
+                    log.info("Master data auto-imported successfully from environment variable.");
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("Could not import master data from MASTER_DATA_BASE64: {}", e.getMessage());
+            }
+        }
+
+        // 2. Check local file paths (local development / testing)
         List<String> candidatePaths = List.of(
                 configuredDataDir,
                 "task_kit/Cantill_FullStack_Task_Kit",
@@ -132,7 +151,7 @@ public class MasterDataService {
                 return;
             }
         }
-        log.info("No master data directory found automatically. Ready for upload or API import.");
+        log.info("No master data directory or env archive found. Master data can be uploaded via /api/master-data/upload or web UI.");
     }
 
     @Transactional
@@ -174,9 +193,80 @@ public class MasterDataService {
     }
 
     @Transactional
-    public int importPlants(Path csvPath) {
-        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
+    public Map<String, Integer> importFromZip(InputStream zipStream) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        try (ZipInputStream zis = new ZipInputStream(zipStream)) {
+            ZipEntry entry;
+            Map<String, byte[]> fileMap = new HashMap<>();
+            while ((entry = zis.getNextEntry()) != null) {
+                if (!entry.isDirectory()) {
+                    String name = entry.getName().toLowerCase();
+                    byte[] bytes = zis.readAllBytes();
+                    fileMap.put(name, bytes);
+                }
+                zis.closeEntry();
+            }
+
+            // Ingest in logical dependency order: plants -> items -> suppliers -> po_history -> contracts -> contract_lines
+            for (Map.Entry<String, byte[]> e : fileMap.entrySet()) {
+                if (e.getKey().endsWith("plants.csv")) {
+                    counts.put("plants", importPlants(new InputStreamReader(new ByteArrayInputStream(e.getValue()), StandardCharsets.UTF_8)));
+                }
+            }
+            for (Map.Entry<String, byte[]> e : fileMap.entrySet()) {
+                if (e.getKey().endsWith("item_master.csv")) {
+                    counts.put("items", importItems(new InputStreamReader(new ByteArrayInputStream(e.getValue()), StandardCharsets.UTF_8)));
+                }
+            }
+            for (Map.Entry<String, byte[]> e : fileMap.entrySet()) {
+                if (e.getKey().endsWith("supplier_master.csv")) {
+                    counts.put("suppliers", importSuppliers(new InputStreamReader(new ByteArrayInputStream(e.getValue()), StandardCharsets.UTF_8)));
+                }
+            }
+            for (Map.Entry<String, byte[]> e : fileMap.entrySet()) {
+                if (e.getKey().endsWith("po_history.csv")) {
+                    counts.put("po_history", importPoHistory(new InputStreamReader(new ByteArrayInputStream(e.getValue()), StandardCharsets.UTF_8)));
+                }
+            }
+            for (Map.Entry<String, byte[]> e : fileMap.entrySet()) {
+                if (e.getKey().endsWith("contract_register.csv")) {
+                    counts.put("contracts", importContracts(new InputStreamReader(new ByteArrayInputStream(e.getValue()), StandardCharsets.UTF_8)));
+                }
+            }
+            for (Map.Entry<String, byte[]> e : fileMap.entrySet()) {
+                if (e.getKey().endsWith("contract_lines.csv")) {
+                    counts.put("contract_lines", importContractLines(new InputStreamReader(new ByteArrayInputStream(e.getValue()), StandardCharsets.UTF_8)));
+                }
+            }
+            log.info("Successfully imported master data from ZIP archive: {}", counts);
+        } catch (Exception e) {
+            log.error("Failed to import master data from ZIP archive: {}", e.getMessage(), e);
+        }
+        return counts;
+    }
+
+    public Map<String, Object> getMasterDataStatus() {
+        Map<String, Object> status = new LinkedHashMap<>();
+        long plantCount = plantRepository.count();
+        long itemCount = itemRepository.count();
+        long supplierCount = supplierRepository.count();
+        long poCount = poHistoryRepository.count();
+        long contractCount = contractRepository.count();
+        long lineCount = contractLineRepository.count();
+
+        status.put("plants", plantCount);
+        status.put("items", itemCount);
+        status.put("suppliers", supplierCount);
+        status.put("po_history", poCount);
+        status.put("contracts", contractCount);
+        status.put("contract_lines", lineCount);
+        status.put("initialized", itemCount > 0 && supplierCount > 0);
+        return status;
+    }
+
+    @Transactional
+    public int importPlants(Reader reader) {
+        try (CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
             List<Plant> plants = new ArrayList<>();
             for (CSVRecord rec : parser) {
                 plants.add(new Plant(rec.get("plant"), rec.get("name")));
@@ -184,15 +274,23 @@ public class MasterDataService {
             plantRepository.saveAll(plants);
             return plants.size();
         } catch (Exception e) {
-            log.error("Failed to import plants from {}: {}", csvPath, e.getMessage());
+            log.error("Failed to import plants: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    public int importPlants(Path csvPath) {
+        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            return importPlants(reader);
+        } catch (Exception e) {
+            log.error("Failed to read plants from {}: {}", csvPath, e.getMessage());
             return 0;
         }
     }
 
     @Transactional
-    public int importItems(Path csvPath) {
-        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
+    public int importItems(Reader reader) {
+        try (CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
             List<Item> items = new ArrayList<>();
             for (CSVRecord rec : parser) {
                 items.add(new Item(
@@ -207,15 +305,23 @@ public class MasterDataService {
             itemRepository.saveAll(items);
             return items.size();
         } catch (Exception e) {
-            log.error("Failed to import items from {}: {}", csvPath, e.getMessage());
+            log.error("Failed to import items: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    public int importItems(Path csvPath) {
+        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            return importItems(reader);
+        } catch (Exception e) {
+            log.error("Failed to read items from {}: {}", csvPath, e.getMessage());
             return 0;
         }
     }
 
     @Transactional
-    public int importSuppliers(Path csvPath) {
-        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
+    public int importSuppliers(Reader reader) {
+        try (CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
             List<Supplier> suppliers = new ArrayList<>();
             for (CSVRecord rec : parser) {
                 suppliers.add(new Supplier(
@@ -231,21 +337,29 @@ public class MasterDataService {
             supplierRepository.saveAll(suppliers);
             return suppliers.size();
         } catch (Exception e) {
-            log.error("Failed to import suppliers from {}: {}", csvPath, e.getMessage());
+            log.error("Failed to import suppliers: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    public int importSuppliers(Path csvPath) {
+        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            return importSuppliers(reader);
+        } catch (Exception e) {
+            log.error("Failed to read suppliers from {}: {}", csvPath, e.getMessage());
             return 0;
         }
     }
 
     @Transactional
-    public int importPoHistory(Path csvPath) {
+    public int importPoHistory(Reader reader) {
         if (poHistoryRepository.count() > 0) {
             log.info("PO history already populated ({} records). Skipping duplicate ingestion.", poHistoryRepository.count());
             return (int) poHistoryRepository.count();
         }
 
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
+        try (CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
             List<PoHistory> poList = new ArrayList<>();
             for (CSVRecord rec : parser) {
                 poList.add(new PoHistory(
@@ -263,16 +377,24 @@ public class MasterDataService {
             poHistoryRepository.saveAll(poList);
             return poList.size();
         } catch (Exception e) {
-            log.error("Failed to import po history from {}: {}", csvPath, e.getMessage());
+            log.error("Failed to import po history: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    public int importPoHistory(Path csvPath) {
+        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            return importPoHistory(reader);
+        } catch (Exception e) {
+            log.error("Failed to read po history from {}: {}", csvPath, e.getMessage());
             return 0;
         }
     }
 
     @Transactional
-    public int importContracts(Path csvPath) {
+    public int importContracts(Reader reader) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
+        try (CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
             List<Contract> contracts = new ArrayList<>();
             for (CSVRecord rec : parser) {
                 contracts.add(new Contract(
@@ -290,18 +412,25 @@ public class MasterDataService {
             contractRepository.saveAll(contracts);
             return contracts.size();
         } catch (Exception e) {
-            log.error("Failed to import contracts from {}: {}", csvPath, e.getMessage());
+            log.error("Failed to import contracts: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    public int importContracts(Path csvPath) {
+        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            return importContracts(reader);
+        } catch (Exception e) {
+            log.error("Failed to read contracts from {}: {}", csvPath, e.getMessage());
             return 0;
         }
     }
 
     @Transactional
-    public int importContractLines(Path csvPath) {
-        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
+    public int importContractLines(Reader reader) {
+        try (CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setTrim(true).build().parse(reader)) {
             List<ContractLine> lines = new ArrayList<>();
             for (CSVRecord rec : parser) {
-                // Check if already exists to make repeatable
                 String contractId = rec.get("contract_id");
                 String itemCode = rec.get("item_code");
                 if (contractLineRepository.findByContractIdAndItemCode(contractId, itemCode).isEmpty()) {
@@ -317,7 +446,16 @@ public class MasterDataService {
             contractLineRepository.saveAll(lines);
             return lines.size();
         } catch (Exception e) {
-            log.error("Failed to import contract lines from {}: {}", csvPath, e.getMessage());
+            log.error("Failed to import contract lines: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    public int importContractLines(Path csvPath) {
+        try (Reader reader = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            return importContractLines(reader);
+        } catch (Exception e) {
+            log.error("Failed to read contract lines from {}: {}", csvPath, e.getMessage());
             return 0;
         }
     }

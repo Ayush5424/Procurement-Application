@@ -1,0 +1,19 @@
+# Ignore local build artifacts and confidential data
+.git
+.github
+task_kit/
+*.zip
+data/
+**/data/
+target/
+**/target/
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+*.log
+.env
+.env.*
+*.env
+.idea/
+.vscode/

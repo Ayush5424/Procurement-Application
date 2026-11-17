@@ -26,8 +26,7 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Include task_kit and submission directories for data persistence and ingestion
-COPY task_kit ./task_kit
+# Include submission directory for batch processing outputs
 COPY submission ./submission
 
 COPY --from=backend-builder /app/backend/target/procurement-engine-*.jar app.jar

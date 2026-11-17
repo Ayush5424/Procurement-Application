@@ -18,3 +18,5 @@ services:
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
+      - key: MASTER_DATA_BASE64
+        sync: false

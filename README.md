@@ -194,6 +194,8 @@ The frontend runs at `http://localhost:5173` (configured with Vite proxy to forw
 | `GET` | `/api/buyer/contracts` | Lists all active contracts and remaining ceiling balances |
 | `POST` | `/api/buyer/contracts/upload-pdf` | Extracts contract details from signed PDF via PDFBox |
 | `POST` | `/api/buyer/contracts/confirm-pdf` | Approves and registers an extracted PDF contract |
+| `GET` | `/api/master-data/status` | Returns counts of items, suppliers, POs, and contracts in database |
+| `POST` | `/api/master-data/upload` | Ingests master data from uploaded ZIP archive or individual CSV |
 | `GET` | `/api/policies` | Lists all procurement policy versions and active status |
 | `POST` | `/api/policies/upload-amendment` | Parses policy amendment PDF and returns extracted changes |
 | `POST` | `/api/policies/{version}/activate` | Activates target policy version immediately |
@@ -227,8 +229,13 @@ The application is deployed on Render as **ONE combined Web Service**, serving b
 - **Single Public URL:** React is built and packaged into Spring Boot's static resources. Direct navigation and page refreshes route through Spring Boot's SPA resource handler without CORS or port differences.
 - **Multi-Stage Dockerfile:** The root [`Dockerfile`](Dockerfile) uses Node 20 to build the React frontend, Maven 3.9 + Temurin 21 to build the Spring Boot JAR with static resources, and runs on a lightweight Temurin 21 JRE container.
 - **External Neon PostgreSQL:** Database connection is managed externally on Neon. The backend automatically parses and normalizes standard Neon JDBC and URI connection strings.
-- **Automated Schema & Migrations:** Flyway runs automatically on startup in the `prod` profile, applying migrations (`V1__init_schema.sql`) and seeding master data.
+- **Automated Schema & Migrations:** Flyway runs automatically on startup in the `prod` profile, applying migrations (`V1__init_schema.sql`).
 - **Health Check Endpoint:** Dedicated `/api/health` monitors application availability.
+- **Deployment-Safe Master Data Ingestion:** Confidential assignment datasets are not committed to public repositories. Master data can be initialized into Neon PostgreSQL via:
+  1. **Web UI:** Click **Master Data** in Buyer Workspace to upload the task kit ZIP or CSVs directly from your browser.
+  2. **Private Env Var:** Paste base64-encoded ZIP into `MASTER_DATA_BASE64` in Render (stored encrypted and private).
+  3. **REST API:** POST archive to `/api/master-data/upload`.
+  4. **Neon Direct Persistence:** Master data persists permanently in Neon PostgreSQL across deployments.
 
 ### Steps to Deploy on Render
 

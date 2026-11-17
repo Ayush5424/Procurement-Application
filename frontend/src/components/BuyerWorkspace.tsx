@@ -19,7 +19,8 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Database
 } from 'lucide-react';
 
 export const BuyerWorkspace: React.FC = () => {
@@ -49,6 +50,21 @@ export const BuyerWorkspace: React.FC = () => {
 
   const [exportDate, setExportDate] = useState<string>('2026-11-01');
 
+  // Master Data Status & Modal
+  const [masterDataStatus, setMasterDataStatus] = useState<{
+    initialized: boolean;
+    plants: number;
+    items: number;
+    suppliers: number;
+    po_history: number;
+    contracts: number;
+    contract_lines: number;
+  } | null>(null);
+  const [showMasterDataModal, setShowMasterDataModal] = useState<boolean>(false);
+  const [masterDataFile, setMasterDataFile] = useState<File | null>(null);
+  const [masterDataLoading, setMasterDataLoading] = useState<boolean>(false);
+  const [masterDataMsg, setMasterDataMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // Override Form
   const [showOverrideForm, setShowOverrideForm] = useState<boolean>(false);
   const [overrideReason, setOverrideReason] = useState<string>('');
@@ -76,8 +92,41 @@ export const BuyerWorkspace: React.FC = () => {
     }
   };
 
+  const checkMasterData = async () => {
+    try {
+      const s = await api.getMasterDataStatus();
+      setMasterDataStatus(s);
+    } catch {
+      // silently ignore if not accessible
+    }
+  };
+
+  const handleUploadMasterData = async () => {
+    if (!masterDataFile) return;
+    setMasterDataLoading(true);
+    setMasterDataMsg(null);
+    try {
+      const res = await api.uploadMasterData(masterDataFile);
+      setMasterDataMsg({
+        type: 'success',
+        text: res.message || 'Master data processed successfully.'
+      });
+      await checkMasterData();
+      await loadRequirements();
+      showNotification('success', 'Master data updated successfully.');
+    } catch (err: any) {
+      setMasterDataMsg({
+        type: 'error',
+        text: err.message || 'Failed to process master data.'
+      });
+    } finally {
+      setMasterDataLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadRequirements();
+    checkMasterData();
   }, [statusFilter]);
 
   const openDetail = async (groupId: string) => {
@@ -271,6 +320,22 @@ export const BuyerWorkspace: React.FC = () => {
             <FileText size={14} /> Register Rate Contract
           </button>
 
+          <button
+            onClick={() => setShowMasterDataModal(true)}
+            className="bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            title="Inspect or upload master catalog and supplier data"
+          >
+            <Database size={14} className="text-slate-500" />
+            <span>Master Data</span>
+            {masterDataStatus && (
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                masterDataStatus.initialized ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+              }`}>
+                {masterDataStatus.items} items
+              </span>
+            )}
+          </button>
+
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
             <input
               type="date"
@@ -296,6 +361,27 @@ export const BuyerWorkspace: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Uninitialized Master Data Alert Banner */}
+      {masterDataStatus && !masterDataStatus.initialized && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle size={18} className="text-amber-600 shrink-0" />
+            <div>
+              <span className="font-semibold text-amber-900">Master Data Not Yet Initialized: </span>
+              <span className="text-amber-800">
+                Item catalog, suppliers, and historical PO data are not loaded in the database yet.
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowMasterDataModal(true)}
+            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium shrink-0 flex items-center gap-1.5 transition text-xs shadow-2xs"
+          >
+            <Upload size={13} /> Load Master Data
+          </button>
+        </div>
+      )}
 
       {/* Filter and search bar */}
       <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200 flex flex-wrap justify-between items-center gap-3">
@@ -834,6 +920,80 @@ export const BuyerWorkspace: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Master Data Management Modal */}
+      {showMasterDataModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Database size={16} className="text-blue-600" /> Master Data Management
+              </h3>
+              <button onClick={() => setShowMasterDataModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Current Statistics */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
+              <div className="font-semibold text-slate-700 text-xs mb-1">Database Records Overview</div>
+              <div className="grid grid-cols-2 gap-2 text-slate-600">
+                <div>Plants: <span className="font-bold text-slate-800">{masterDataStatus?.plants ?? 0}</span></div>
+                <div>Catalog Items: <span className="font-bold text-slate-800">{masterDataStatus?.items ?? 0}</span></div>
+                <div>Suppliers: <span className="font-bold text-slate-800">{masterDataStatus?.suppliers ?? 0}</span></div>
+                <div>PO History: <span className="font-bold text-slate-800">{masterDataStatus?.po_history ?? 0}</span></div>
+                <div>Contracts: <span className="font-bold text-slate-800">{masterDataStatus?.contracts ?? 0}</span></div>
+                <div>Contract Lines: <span className="font-bold text-slate-800">{masterDataStatus?.contract_lines ?? 0}</span></div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Upload the master data package (ZIP archive containing catalog, supplier, and PO history CSVs) or an individual master data CSV file to initialize or update the database.
+            </p>
+
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer">
+              <input
+                type="file"
+                accept=".zip,.csv"
+                onChange={e => setMasterDataFile(e.target.files?.[0] || null)}
+                className="w-full text-xs text-slate-700"
+              />
+              {masterDataFile && (
+                <div className="mt-2 text-xs font-semibold text-emerald-700">
+                  Selected: {masterDataFile.name} ({(masterDataFile.size / 1024).toFixed(1)} KB)
+                </div>
+              )}
+            </div>
+
+            {masterDataMsg && (
+              <div className={`p-3 rounded-lg text-xs font-medium ${
+                masterDataMsg.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200'
+              }`}>
+                {masterDataMsg.text}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowMasterDataModal(false)}
+                className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
+              >
+                Close
+              </button>
+              <button
+                disabled={!masterDataFile || masterDataLoading}
+                onClick={handleUploadMasterData}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg text-xs transition flex items-center justify-center gap-1.5"
+              >
+                <Upload size={14} />
+                {masterDataLoading ? 'Processing...' : 'Upload & Ingest'}
+              </button>
+            </div>
           </div>
         </div>
       )}

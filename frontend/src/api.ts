@@ -184,5 +184,34 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to activate policy version');
     return res.json();
+  },
+
+  // Master Data Management
+  async getMasterDataStatus(): Promise<{
+    initialized: boolean;
+    plants: number;
+    items: number;
+    suppliers: number;
+    po_history: number;
+    contracts: number;
+    contract_lines: number;
+  }> {
+    const res = await fetch(`${API_BASE}/master-data/status`);
+    if (!res.ok) throw new Error('Failed to fetch master data status');
+    return res.json();
+  },
+
+  async uploadMasterData(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/master-data/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to upload master data');
+    }
+    return res.json();
   }
 };
