@@ -119,3 +119,62 @@ Clause 7.1 & 7.2:
 ### 2.6 Unprocessed Lines Handling
 
 If an input PR line contains malformed dates, negative quantities, or cannot be parsed, the engine marks the line as `NOT_PROCESSED` with a detailed explanation in `reason`, satisfying Section 12 requirements.
+
+---
+
+### 2.7 Deployment Architecture Decision: Combined Web Service vs. Separate Static Site
+
+#### What was noticed
+Render supports deploying frontend and backend either as two distinct services (a Static Site for React and a Web Service for Spring Boot) or as a single combined Docker Web Service.
+
+#### What was decided
+We selected **ONE combined Web Service** on Render:
+1. **Single Public URL:** Eliminates CORS configurations, cross-origin preflight requests, and cookie/session domain issues.
+2. **Simplified Operational Footprint:** One unified build and health check (`/api/health`) across the entire stack.
+3. **Atomic Deployments:** Frontend assets and backend API contracts are packaged together in the same container, eliminating version drift between client and server.
+4. **Zero-Lag Routing:** API requests route internally over `localhost` rather than crossing external public network boundaries.
+
+---
+
+### 2.8 Confidential Master Data & Deployment-Safe Runtime Ingestion
+
+#### What was noticed
+1. Assignment instructions strictly prohibit committing proprietary or confidential task datasets and PDFs (`task_kit/`) to public GitHub repositories.
+2. Simply removing `COPY task_kit` from Dockerfile allows Render Docker builds to pass, but leaves a freshly provisioned cloud database empty—breaking item resolution, supplier ranking, and contract matching during evaluation.
+3. Introducing synthetic or mock data is unacceptable as it violates Corvo Procurement Policy consistency.
+
+#### What was decided
+We designed a four-tier deployment-safe master data strategy:
+1. **Repository Security:** `task_kit/`, `.zip`, and local database files are excluded from Git (`.gitignore`) and Docker build contexts (`.dockerignore`).
+2. **Stream & ZIP Ingestion:** Extended `MasterDataService` to accept stream readers and standard ZIP packages (`importFromZip`), parsing CSVs in logical sequence (plants $\rightarrow$ items $\rightarrow$ suppliers $\rightarrow$ po_history $\rightarrow$ contracts $\rightarrow$ contract_lines).
+3. **In-Browser Master Data Management:** In Buyer Workspace, a Master Data status inspector displays real-time record counts. If the database is uninitialized, an alert banner enables the user to upload the task kit ZIP or CSVs directly through the UI.
+4. **Encrypted Environment Variable Option:** Supported an optional `MASTER_DATA_BASE64` variable in `render.yaml` (stored privately in Render) for automated zero-touch seeding on startup.
+5. **Persistent Neon PostgreSQL:** Data ingested once into Neon persists permanently across redeployments, container rebuilds, and scale-to-zero cycles.
+6. **Local Developer Workflow Preserved:** `MasterDataService.autoImportIfDataAvailable()` continues to auto-discover local `task_kit` directory paths, ensuring local test suites run with 100% test passing rates.
+
+---
+
+### 2.9 Neon Serverless PostgreSQL Connection Normalization
+
+#### What was noticed
+Neon connection strings copied from the Neon console frequently use direct URI formats (e.g. `postgresql://user:pass@ep-xyz.aws.neon.tech/neondb?sslmode=require`), whereas standard PostgreSQL JDBC drivers require the `jdbc:postgresql://host:port/db` scheme and fail if passed raw URIs.
+
+#### What was decided
+Implemented custom connection normalizer in `DataSourceConfig.java`:
+1. Detects `postgres://` and `postgresql://` URI prefixes.
+2. Extracts user credentials (`userInfo`) and passes them cleanly to `DataSourceProperties`.
+3. Reconstructs valid JDBC connection URLs with SSL parameters intact.
+4. Falls back cleanly to standard JDBC strings, ensuring flawless connection regardless of which format the user pastes into Render environment variables.
+
+---
+
+### 2.10 Client-Side SPA Routing & REST API Isolation
+
+#### What was noticed
+When hosting a React Single Page Application (SPA) inside Spring Boot, direct navigation to client routes (e.g., `/buyer`, `/policy`, `/chat`) or browser page refreshes will request those paths from the Spring Boot web server, which typically results in 404 Not Found.
+
+#### What was decided
+Configured a custom `PathResourceResolver` in `WebConfig.java`:
+1. **API Protection:** Never intercepts requests beginning with `/api/` or `api/`, ensuring all REST controllers handle API calls and return appropriate JSON error payloads for non-existent endpoints.
+2. **Static Asset Pass-Through:** Serves existing static files (`assets/*.js`, `assets/*.css`, images) directly from `/static/`. Missing static assets with extensions return standard 404s.
+3. **Client-Side Forwarding:** All HTML navigation routes without file extensions are forwarded to `/static/index.html`, allowing React Router / view state machines to mount and render seamlessly.

@@ -7,41 +7,45 @@
 
 ## 1. System Architecture
 
-The application is structured as a clean, modular full-stack web application designed for correctness, deterministic decision-making, explainability, and zero code-modification policy updates.
+The application is structured as a clean, modular full-stack web application designed for correctness, deterministic decision-making, explainability, zero code-modification policy updates, and zero-headache cloud deployment.
+
+In production on Render, the system runs as **ONE combined Web Service**, where Spring Boot 3.3.x (Java 21) serves both the compiled React + TypeScript Single Page Application (SPA) static bundle and all `/api/**` REST endpoints from a single public domain and port, backed by an external Neon Serverless PostgreSQL database.
 
 ```
-+-------------------------------------------------------------------------+
-|                        React + Vite + Tailwind CSS                      |
-|      [Employee Chat]        [Buyer Workspace]      [Policy Management]  |
-+------------------------------------+------------------------------------+
-                                     | REST APIs / JSON / Multipart
-+------------------------------------v------------------------------------+
-|                    Spring Boot 3.3.x Backend (Java 21)                  |
-|                                                                         |
-|  [Controllers]                                                          |
-|    - EmployeeChatController        - BuyerWorkspaceController           |
-|    - BatchProcessingController     - PolicyManagementController         |
-|                                                                         |
-|  [Core Services & Domain Engine]                                        |
-|    - ItemMatchingService (Rule-based & Token-Similarity Matcher)        |
-|    - ClubbingService (14-day creation / 7-day need-by boundary)         |
-|    - ValuationService (Rate Contract -> PO History -> Std Price)        |
-|    - ContractEngineService (Live Ceiling Tracking & PDF Extraction)     |
-|    - SupplierRankingService (Composite Scoring Model)                   |
-|    - ProcurementDecisionEngine (Generic Policy Rule Evaluator)          |
-|    - PoConsolidationService (24-hour window PO clustering)              |
-|    - MasterDataService (Repeatable CSV Master Ingestion)                |
-|    - ContractPdfService (Apache PDFBox Contract Ingestion)              |
-|                                                                         |
-|  [Spring Data JPA Repositories & Relational Mapping]                    |
-+------------------------------------+------------------------------------+
-                                     |
-+------------------------------------v------------------------------------+
-|                      PostgreSQL / Flyway Migrations                     |
-|  - Items, Suppliers, Plants, PO History, Contracts, Contract Lines      |
-|  - Purchase Requisitions, PR Lines, Requirements, PO Records            |
-|  - Policy Versions, Policy Rules, Audit Records, Chat Sessions          |
-+-------------------------------------------------------------------------+
+                              Render Web Service (Single Public URL)
+                             ┌─────────────────────────────────────────────────────────┐
+                             │               Spring Boot 3.3.x (Java 21 JRE)           │
+                             │                                                         │
+Browser Client ─────────────►│ 1. GET /              ──► index.html                    │
+(Single Public Origin)       │ 2. GET /buyer, /chat  ──► index.html (SPA Route Forward) │
+                             │ 3. GET /assets/**     ──► Static CSS / JS Bundle        │
+                             │ 4. ALL /api/**        ──► Spring MVC REST Controllers   │
+                             │                                                         │
+                             │ [REST Controllers]                                      │
+                             │   - EmployeeChatController    - BuyerWorkspaceController│
+                             │   - BatchProcessingController - PolicyManagementCtrl    │
+                             │   - MasterDataController      - HealthController        │
+                             │                                                         │
+                             │ [Core Services & Domain Engine]                         │
+                             │   - ItemMatchingService (Rule & Token Normalization)    │
+                             │   - ClubbingService (14-day creation / 7-day need-by)   │
+                             │   - ValuationService (Contract -> PO Hist -> Std Price) │
+                             │   - ContractEngineService (Live Ceiling Tracking & PDF) │
+                             │   - SupplierRankingService (Composite Scoring Model)    │
+                             │   - ProcurementDecisionEngine (Dynamic Rule Evaluator)  │
+                             │   - PoConsolidationService (24-hour window clustering)  │
+                             │   - MasterDataService (Repeatable CSV/ZIP Ingestion)    │
+                             │   - ContractPdfService (Apache PDFBox Contract Ingest)  │
+                             └────────────────────────────┬────────────────────────────┘
+                                                          │
+                                                          ▼ (HikariCP / JDBC with SSL)
+                                        Neon Serverless PostgreSQL (or local H2)
+                             ┌─────────────────────────────────────────────────────────┐
+                             │  - Items, Suppliers, Plants, PO History, Contracts      │
+                             │  - Purchase Requisitions, PR Lines, Requirements, POs   │
+                             │  - Policy Versions, Policy Rules, Audit Records, Chat   │
+                             │  - Automated Flyway Migrations (V1__init_schema.sql)    │
+                             └─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -65,7 +69,7 @@ The decision engine strictly enforces Corvo Procurement Policy v5.0 rules throug
 Rather than using unreliable external LLMs or multi-field forms, employee intake is powered by a robust conversational NLP engine implemented in Java:
 - **Intent and Entity Extraction:** Regex and token parsing extract item code, item description, quantity, plant (`CHK1` / `PUN1`), need-by date (supporting ISO dates and relative phrasing like *"by next Friday"* or *"tomorrow"*), and urgency (`Normal` / `Emergency`).
 - **Conversational State Machine:** Tracks missing fields and maintains dialog state across messages (`ACTIVE`, `CLARIFICATION_NEEDED`, `CONFIRMATION_PENDING`, `COMPLETED`).
-- **Disambiguation:** If multiple catalog items match, presents clickable candidate choices.
+- **Disambiguation:** If multiple catalog items match, presents candidate choices.
 - **New Item Handling:** Gracefully handles unknown items without inventing fake item codes, and prompts requester for an estimated unit price.
 - **Explicit Confirmation:** Displays a structured summary card before writing the PR to the database.
 
@@ -81,7 +85,40 @@ All procurement policies and decision rules are stored as versioned entities in 
 
 ---
 
-## 5. AI Tools & Functionality Disclosure
+## 5. Deployment & Runtime Architecture
+
+### 5.1 Single Combined Web Service on Render
+- **Packaging:** React frontend production assets (`index.html`, `assets/`) are compiled and embedded directly into Spring Boot static resources (`/static/`).
+- **Client-Side Routing:** Configured via `WebConfig.java` using Spring's `PathResourceResolver`:
+  - Declines any requests under `/api/**` so that REST controllers handle API calls and return JSON 404s for invalid endpoints.
+  - Serves static assets (`assets/**`) directly.
+  - Forwards all SPA navigation paths (`/buyer`, `/chat`, `/policy`, browser refreshes) to `index.html`.
+- **Single Public URL:** Eliminates CORS issues, cross-domain cookie complexities, and multiple cloud services.
+
+### 5.2 Multi-Stage Docker Build
+Root `Dockerfile` utilizes a 3-stage container build:
+1. **Stage 1 (Node 20 Alpine):** Installs frontend dependencies and executes `tsc && vite build`.
+2. **Stage 2 (Maven 3.9 + Eclipse Temurin 21 Alpine):** Copies built static assets into Spring Boot resources and packages the fat JAR (`mvn clean package -DskipTests`).
+3. **Stage 3 (Eclipse Temurin 21 JRE Alpine):** Copies the fat JAR and submission directories into a hardened, minimal runtime image exposing port 8080.
+
+### 5.3 External Neon PostgreSQL & Connection Normalization
+- Configured via environment variables: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`.
+- **URL Normalizer:** `DataSourceConfig.java` parses standard Neon connection URIs (`postgresql://` or `postgres://`), extracts user credentials if embedded, and constructs valid JDBC connection URLs (`jdbc:postgresql://...`) with SSL support.
+- **Connection Pool:** HikariCP tuned for serverless PostgreSQL (`maximum-pool-size: 10`, `idle-timeout: 300000ms`, `connection-timeout: 20000ms`).
+
+### 5.4 Deployment-Safe Master Data Ingestion
+To comply with data confidentiality rules without publishing proprietary task datasets to public repositories:
+- `task_kit/` is strictly excluded from Git and Docker build contexts via `.gitignore` and `.dockerignore`.
+- **Runtime Ingestion Methods:**
+  1. **In-Browser UI:** Buyer Workspace provides a Master Data modal and status inspector showing live DB counts, allowing direct upload of the assignment ZIP package (`Cantill_FullStack_Task_Kit.zip`) or individual CSVs.
+  2. **REST API:** `POST /api/master-data/upload` accepts ZIP archives or CSVs and ingests them via `MasterDataService.importFromZip()`.
+  3. **Encrypted Env Var:** Optional `MASTER_DATA_BASE64` in Render auto-seeds the database on cold startup.
+  4. **Persistence:** Data ingested once into Neon PostgreSQL persists permanently across container restarts and redeployments.
+  5. **Local Compatibility:** Local development and unit tests continue to auto-import from local `task_kit` directory paths seamlessly.
+
+---
+
+## 6. AI Tools & Functionality Disclosure
 
 ### AI Coding Tools Used During Development
 - Antigravity AI agent assisted in codebase scaffolding, writing Flyway migrations, implementing test cases for worked examples, and creating documentation.
