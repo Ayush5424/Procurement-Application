@@ -2,6 +2,9 @@
 
 > A full-stack, policy-driven procurement application designed for Corvo Engineering Pvt Ltd. Translates purchase requisitions into purchase orders or sourcing requests strictly following **Corvo Procurement Policy v5.0** and dynamic policy amendments.
 
+**Live Application:** [https://cantill-procurement.onrender.com/](https://cantill-procurement.onrender.com/)  
+**Health Check:** [https://cantill-procurement.onrender.com/api/health](https://cantill-procurement.onrender.com/api/health)
+
 ---
 
 ## Table of Contents
