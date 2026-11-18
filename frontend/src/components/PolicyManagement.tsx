@@ -181,8 +181,8 @@ export const PolicyManagement: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200">
-        <h2 className="text-lg font-bold text-slate-800">Procurement Policy Governance</h2>
+      <div className="bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-200">
+        <h2 className="text-base sm:text-lg font-bold text-slate-800">Procurement Policy Governance</h2>
         <p className="text-xs text-slate-500 mt-0.5">
           View active procurement policy rules, approval thresholds, and route allocations. Upload signed amendments to update thresholds across the organization.
         </p>
@@ -192,14 +192,14 @@ export const PolicyManagement: React.FC = () => {
         {/* Left column: Policy Versions and Rules Table */}
         <div className="lg:col-span-2 space-y-5">
           {/* Version Selector Bar */}
-          <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-xs border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span className="text-xs font-semibold text-slate-600">Active Versions:</span>
               {policies.map(p => (
                 <button
                   key={p.versionNumber}
                   onClick={() => setSelectedVersion(p.versionNumber)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                     selectedVersion === p.versionNumber
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -218,37 +218,37 @@ export const PolicyManagement: React.FC = () => {
 
           {/* Rules Table */}
           <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-            <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 font-semibold text-xs text-slate-700 flex justify-between items-center">
+            <div className="px-4 sm:px-5 py-3 sm:py-3.5 bg-slate-50 border-b border-slate-200 font-semibold text-xs text-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0">
               <span className="flex items-center gap-1.5">
                 <ListOrdered size={15} className="text-blue-600" /> Evaluation Hierarchy & Rules
               </span>
-              <span className="text-slate-400 font-normal">Evaluated in sequential priority</span>
+              <span className="text-slate-400 font-normal text-[11px] sm:text-xs">Evaluated in sequential priority</span>
             </div>
 
             <div className="divide-y divide-slate-100 text-xs">
               {rules.map(rule => (
-                <div key={rule.ruleCode} className="p-4 hover:bg-slate-50/70 transition flex items-start gap-4">
+                <div key={rule.ruleCode} className="p-3.5 sm:p-4 hover:bg-slate-50/70 transition flex items-start gap-3 sm:gap-4">
                   <div className="w-7 h-7 rounded-full bg-slate-100 text-blue-700 font-bold flex items-center justify-center shrink-0 text-xs">
                     {rule.priority}
                   </div>
 
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-800 text-sm">Clause {rule.ruleCode} — {rule.name}</span>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <span className="font-semibold text-slate-800 text-xs sm:text-sm">Clause {rule.ruleCode} — {rule.name}</span>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         rule.outcome === 'PO' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
                       }`}>
                         {rule.outcome}
                       </span>
-                      <span className="font-mono text-[11px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+                      <span className="font-mono text-[10px] sm:text-[11px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
                         {rule.route}
                       </span>
                     </div>
 
-                    <p className="text-slate-600 text-xs leading-relaxed">{rule.description}</p>
+                    <p className="text-slate-600 text-xs leading-relaxed break-words">{rule.description}</p>
 
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 pt-1.5">
-                      <span className="bg-slate-50 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-slate-500 pt-1.5">
+                      <span className="bg-slate-50 text-slate-600 px-2 py-0.5 rounded border border-slate-200 break-words">
                         {formatConditions(rule.conditionsJson)}
                       </span>
                       {rule.supplierSuggestionCount ? (
@@ -265,7 +265,7 @@ export const PolicyManagement: React.FC = () => {
         {/* Right column: Policy Amendment Upload */}
         <div className="space-y-5">
           {/* Upload Amendment Card */}
-          <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200 space-y-4">
+          <div className="bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-200 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
               <Upload size={15} className="text-blue-600" /> Upload Policy Amendment PDF
             </h3>
@@ -273,7 +273,7 @@ export const PolicyManagement: React.FC = () => {
               Upload a signed procurement policy amendment PDF. The system will extract updated clauses and rule thresholds for review.
             </p>
 
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center">
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-3.5 sm:p-4 text-center">
               <input
                 type="file"
                 accept=".pdf"
@@ -321,13 +321,13 @@ export const PolicyManagement: React.FC = () => {
 
           {/* Proposal Preview & Activation Card */}
           {proposal && (
-            <div className="bg-slate-50 border border-slate-300 rounded-xl p-5 space-y-4 animate-in fade-in duration-200">
+            <div className="bg-slate-50 border border-slate-300 rounded-xl p-4 sm:p-5 space-y-4 animate-in fade-in duration-200">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-slate-800 text-sm">Proposed Version: v{proposal.newVersionNumber}</span>
                 <span className="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded">Ready for Review</span>
               </div>
 
-              <div className="text-xs text-slate-700 bg-white p-3.5 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-line">
+              <div className="text-xs text-slate-700 bg-white p-3 sm:p-3.5 rounded-lg border border-slate-200 leading-relaxed whitespace-pre-line break-words">
                 {proposal.plainLanguageExplanation}
               </div>
 

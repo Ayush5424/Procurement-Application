@@ -299,30 +299,30 @@ export const BuyerWorkspace: React.FC = () => {
       )}
 
       {/* Top action bar */}
-      <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+      <div className="bg-white p-4 sm:p-5 rounded-xl shadow-xs border border-slate-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Buyer Workspace</h2>
+          <h2 className="text-base sm:text-lg font-bold text-slate-800">Buyer Workspace</h2>
           <p className="text-xs text-slate-500">Review, approve, and manage purchase requisitions, rate contracts, and supplier allocations.</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <button
             onClick={() => setShowBatchModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+            className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-xs whitespace-nowrap"
           >
             <Upload size={14} /> Process Batch CSV
           </button>
 
           <button
             onClick={() => setShowContractModal(true)}
-            className="bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            className="flex-1 sm:flex-initial bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition whitespace-nowrap"
           >
             <FileText size={14} /> Register Rate Contract
           </button>
 
           <button
             onClick={() => setShowMasterDataModal(true)}
-            className="bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            className="flex-1 sm:flex-initial bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition whitespace-nowrap"
             title="Inspect or upload master catalog and supplier data"
           >
             <Database size={14} className="text-slate-500" />
@@ -336,16 +336,16 @@ export const BuyerWorkspace: React.FC = () => {
             )}
           </button>
 
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg w-full sm:w-auto justify-between sm:justify-start">
             <input
               type="date"
               value={exportDate}
               onChange={e => setExportDate(e.target.value)}
-              className="bg-white text-xs border border-slate-300 rounded px-2 py-1 outline-none text-slate-700"
+              className="bg-white text-xs border border-slate-300 rounded px-2 py-1 outline-none text-slate-700 flex-1 sm:flex-initial"
             />
             <button
               onClick={handleExportSuppliers}
-              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 transition"
+              className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1 transition whitespace-nowrap"
               title="Export Top Preferred Suppliers as of selected date"
             >
               <Download size={13} /> Export Suppliers CSV
@@ -354,7 +354,7 @@ export const BuyerWorkspace: React.FC = () => {
 
           <button
             onClick={loadRequirements}
-            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+            className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition shrink-0"
             title="Refresh list"
           >
             <RefreshCw size={15} />
@@ -384,10 +384,10 @@ export const BuyerWorkspace: React.FC = () => {
       )}
 
       {/* Filter and search bar */}
-      <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200 flex flex-wrap justify-between items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-slate-400" />
-          <span className="text-xs font-medium text-slate-600">Status:</span>
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-xs border border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <Filter size={14} className="text-slate-400 shrink-0" />
+          <span className="text-xs font-medium text-slate-600 shrink-0">Status:</span>
           {[
             { id: 'ALL', label: 'All' },
             { id: 'PENDING_REVIEW', label: 'Pending Review' },
@@ -397,7 +397,7 @@ export const BuyerWorkspace: React.FC = () => {
             <button
               key={st.id}
               onClick={() => setStatusFilter(st.id)}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition ${
+              className={`px-2.5 sm:px-3 py-1 text-xs rounded-md font-medium transition whitespace-nowrap shrink-0 ${
                 statusFilter === st.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
@@ -408,14 +408,14 @@ export const BuyerWorkspace: React.FC = () => {
           ))}
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-64">
           <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
           <input
             type="text"
             placeholder="Search group, item, plant, route..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-64 text-slate-800"
+            className="pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg outline-none focus:border-blue-500 w-full text-slate-800"
           />
         </div>
       </div>
@@ -423,7 +423,7 @@ export const BuyerWorkspace: React.FC = () => {
       {/* Requirements Table */}
       <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full min-w-[950px] text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
                 <th className="py-3 px-4">Req. Group</th>
@@ -532,18 +532,18 @@ export const BuyerWorkspace: React.FC = () => {
       {/* Requirement Detail Drawer */}
       {selectedGroupId && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex justify-end">
-          <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+          <div className="bg-white w-full max-w-full sm:max-w-2xl h-full shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
             {/* Modal Header */}
-            <div className="p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+            <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base text-slate-800">{selectedGroupId}</h3>
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <h3 className="font-bold text-sm sm:text-base text-slate-800">{selectedGroupId}</h3>
+                  <span className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-semibold ${
                     detail?.requirement.decision === 'PO' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                   }`}>
                     {detail?.requirement.decision}
                   </span>
-                  <span className="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">
+                  <span className="text-[10px] sm:text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">
                     {detail?.requirement.route}
                   </span>
                 </div>
@@ -553,20 +553,20 @@ export const BuyerWorkspace: React.FC = () => {
               </div>
               <button
                 onClick={() => setSelectedGroupId(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-700">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs text-slate-700">
               {detailLoading ? (
                 <div className="py-12 text-center text-slate-400">Loading requirement breakdown...</div>
               ) : detail ? (
                 <>
                   {/* Decision & Valuation Summary Card */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-2">
                     <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
                       <CheckCircle size={15} className="text-blue-600" /> Procurement Decision Summary
                     </h4>
@@ -603,8 +603,8 @@ export const BuyerWorkspace: React.FC = () => {
                     <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
                       Associated Requisition Lines ({detail.mappedPrLines.length})
                     </h4>
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-xs">
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-x-auto">
+                      <table className="w-full text-left text-xs min-w-[300px]">
                         <thead className="bg-slate-100 border-b border-slate-200 font-semibold text-slate-600">
                           <tr>
                             <th className="py-2 px-3">PR Number</th>
@@ -629,8 +629,8 @@ export const BuyerWorkspace: React.FC = () => {
                       <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
                         Preferred Supplier Rankings
                       </h4>
-                      <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
-                        <table className="w-full text-left text-xs">
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-x-auto">
+                        <table className="w-full text-left text-xs min-w-[550px]">
                           <thead className="bg-slate-100 border-b border-slate-200 font-semibold text-slate-600">
                             <tr>
                               <th className="py-2 px-3">Rank</th>
@@ -711,7 +711,7 @@ export const BuyerWorkspace: React.FC = () => {
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">New Decision</label>
                           <select
@@ -740,7 +740,7 @@ export const BuyerWorkspace: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <div>
                           <label className="block text-[11px] font-semibold text-slate-700 mb-1">Supplier ID (if PO)</label>
                           <input
@@ -772,7 +772,7 @@ export const BuyerWorkspace: React.FC = () => {
                       </button>
                     </form>
                   ) : (
-                    <div className="flex gap-2 pt-4 border-t border-slate-200">
+                    <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-slate-200">
                       <button
                         onClick={() => handleApprove(detail.requirement.groupId)}
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
@@ -781,7 +781,7 @@ export const BuyerWorkspace: React.FC = () => {
                       </button>
                       <button
                         onClick={() => setShowOverrideForm(true)}
-                        className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-xs transition border border-slate-300"
+                        className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-xs transition border border-slate-300 text-center"
                       >
                         Override...
                       </button>
@@ -796,8 +796,8 @@ export const BuyerWorkspace: React.FC = () => {
 
       {/* Batch Processing Modal */}
       {showBatchModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                 <Upload size={16} className="text-blue-600" /> Process Requisition Batch
@@ -811,7 +811,7 @@ export const BuyerWorkspace: React.FC = () => {
               Upload a purchase requisition batch CSV to evaluate demand requirements, apply applicable rate contracts, assign procurement routes, and consolidate purchase orders.
             </p>
 
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer">
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 sm:p-6 text-center hover:border-blue-500 transition cursor-pointer">
               <input
                 type="file"
                 accept=".csv"
@@ -833,18 +833,18 @@ export const BuyerWorkspace: React.FC = () => {
               </div>
             )}
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <button
                 disabled={!batchFile || batchLoading}
                 onClick={handleProcessBatch}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white py-2 rounded-lg text-xs font-semibold transition"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white py-2 rounded-lg text-xs font-semibold transition text-center"
               >
                 {batchLoading ? 'Processing Batch...' : 'Process Batch'}
               </button>
               <button
                 disabled={!batchFile}
                 onClick={handleExportDecisionsCsv}
-                className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
                 title="Download decisions CSV directly"
               >
                 <Download size={14} /> Export CSV
@@ -856,8 +856,8 @@ export const BuyerWorkspace: React.FC = () => {
 
       {/* Rate Contract Registration Modal */}
       {showContractModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-xl w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                 <FileText size={16} className="text-blue-600" /> Register Rate Contract
@@ -888,12 +888,12 @@ export const BuyerWorkspace: React.FC = () => {
             </div>
 
             {extractedContract && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-3 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-slate-800 text-sm">Contract: {extractedContract.contractId}</span>
                   <span className="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded text-[10px]">Document Verified</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-slate-600 text-[11px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 text-[11px]">
                   <div>Supplier: <span className="font-semibold text-slate-800">{extractedContract.supplierName} ({extractedContract.supplierId})</span></div>
                   <div>Ceiling: <span className="font-semibold text-slate-800">INR {extractedContract.valueCap?.toLocaleString('en-IN')}</span></div>
                   <div>Validity: <span className="font-semibold text-slate-800">{extractedContract.startDate} to {extractedContract.endDate}</span></div>
@@ -926,8 +926,8 @@ export const BuyerWorkspace: React.FC = () => {
 
       {/* Master Data Management Modal */}
       {showMasterDataModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                 <Database size={16} className="text-blue-600" /> Master Data Management
@@ -938,7 +938,7 @@ export const BuyerWorkspace: React.FC = () => {
             </div>
 
             {/* Current Statistics */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 text-xs space-y-2">
               <div className="font-semibold text-slate-700 text-xs mb-1">Database Records Overview</div>
               <div className="grid grid-cols-2 gap-2 text-slate-600">
                 <div>Plants: <span className="font-bold text-slate-800">{masterDataStatus?.plants ?? 0}</span></div>
@@ -954,7 +954,7 @@ export const BuyerWorkspace: React.FC = () => {
               Upload the master data package (ZIP archive containing catalog, supplier, and PO history CSVs) or an individual master data CSV file to initialize or update the database.
             </p>
 
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition cursor-pointer">
+            <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 sm:p-6 text-center hover:border-blue-500 transition cursor-pointer">
               <input
                 type="file"
                 accept=".zip,.csv"
