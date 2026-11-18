@@ -118,12 +118,32 @@ To comply with data confidentiality rules without publishing proprietary task da
 
 ---
 
-## 6. AI Tools & Functionality Disclosure
+## 6. Tools, Technologies & AI Disclosure ("Tell us what you used")
 
-### AI Coding Tools Used During Development
-- Antigravity AI agent assisted in codebase scaffolding, writing Flyway migrations, implementing test cases for worked examples, and creating documentation.
+In compliance with Ground Rule 7 (*"AI tools are allowed, both for coding and inside your app (for chat and policy reading). Say what you used in APPROACH.md"*):
 
-### AI Functionality Inside the Application
-- The application itself **does not** depend on paid external LLMs, OpenAI, Claude, Gemini, or Ollama APIs.
-- All procurement decisions, item matching, entity extraction, supplier ranking, and rule evaluation are entirely deterministic, explainable, and executed locally in Java.
-- This guarantees zero hallucination, strict auditability for compliance, and reproducibility required for enterprise procurement operations.
+### 6.1 Full-Stack Technologies & Libraries Used
+- **Backend Framework & Language:** Java 21, Spring Boot 3.3.5 (Spring Web, Spring Data JPA, Hibernate, Bean Validation).
+- **Frontend Framework & Tooling:** React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Lucide React (icons).
+- **Document & Data Processing:**
+  - `Apache Commons CSV 1.11.0` — Deterministic CSV parsing, sanitization, and export across RFC-4180 standard formats.
+  - `Apache PDFBox 3.0.3` — Extraction of text, clauses, and structured terms from rate contract PDFs and policy amendment documents.
+- **Database & Migration:**
+  - `Neon Serverless PostgreSQL 16` — Primary cloud production relational database.
+  - `Flyway Core & Flyway PostgreSQL 10.15.2` — Repeatable database migrations and schema versioning (`V1__init_schema.sql`).
+  - `HikariCP` — High-performance JDBC connection pooling tuned for serverless PostgreSQL.
+  - `H2 Database 2.2.x` — In-memory relational database fallback for automated unit testing.
+- **Containerization & Hosting:**
+  - `Docker` — Multi-stage containerization (`node:20-alpine`, `maven:3.9.9-eclipse-temurin-21-alpine`, `eclipse-temurin:21-jre-alpine`).
+  - `Render` — Single unified Web Service hosting both static SPA assets and backend REST APIs.
+
+### 6.2 AI Coding Tools Used During Development
+- **Antigravity AI Agent (Google DeepMind):** Used as an autonomous engineering partner for boilerplate code scaffolding, constructing Flyway DDL schemas, implementing deterministic test assertions for the 14 worked examples, conducting frontend cleanup, and preparing cloud deployment blueprints.
+
+### 6.3 In-App Intelligence & Processing Strategy
+- **Zero Paid/External LLM Dependencies:** The production application **does not call external AI APIs** (e.g. OpenAI GPT-4, Anthropic Claude, Google Gemini, or Ollama).
+- **Why Deterministic Java NLP Was Selected Over External LLMs:**
+  1. **Strict Explainability & Zero Hallucination:** In enterprise procurement, a hallucinated supplier code, altered rate, or fabricated catalog item can cause legal and financial liability. Deterministic regex token parsing guarantees 100% reproducible entity extraction.
+  2. **Predictable Cold-Start & Latency:** In-memory Java string analysis executes in sub-millisecond timeframes without external API rate limits, timeouts, or token costs.
+  3. **Data Privacy & Compliance:** No company purchase requests or supplier pricing data leave the application boundary.
+  4. **Dynamic Policy Updates Without Code:** Policy amendments are parsed by Apache PDFBox and stored as relational rules in PostgreSQL, allowing dynamic policy updates (e.g., v5.0 $\rightarrow$ v5.1) without touching Java code or relying on unpredictable LLM prompt engineering.

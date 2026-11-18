@@ -178,3 +178,35 @@ Configured a custom `PathResourceResolver` in `WebConfig.java`:
 1. **API Protection:** Never intercepts requests beginning with `/api/` or `api/`, ensuring all REST controllers handle API calls and return appropriate JSON error payloads for non-existent endpoints.
 2. **Static Asset Pass-Through:** Serves existing static files (`assets/*.js`, `assets/*.css`, images) directly from `/static/`. Missing static assets with extensions return standard 404s.
 3. **Client-Side Forwarding:** All HTML navigation routes without file extensions are forwarded to `/static/index.html`, allowing React Router / view state machines to mount and render seamlessly.
+
+---
+
+### 2.11 RFQ vs. RFP Threshold Discrepancy Resolution
+
+#### What was noticed
+1. A summary table in the general task brief suggested an RFQ threshold of ₹5,00,000.
+2. In contrast, the formal governing policy document (**Corvo Procurement Policy v5.0**, Clauses 5.5 and 5.6) explicitly states:
+   - **Clause 5.5 (RFQ):** *"For any requirement whose value is below ₹10,00,000... Procurement solicits quotes from three suppliers."*
+   - **Clause 5.6 (RFP):** *"For any requirement whose value is ₹10,00,000 or more, Procurement conducts a formal Request for Proposal with at least five suppliers."*
+3. Furthermore, Worked Examples (Worked Examples 12 and 14) consistently confirm ₹10,00,000 as the boundary dividing RFQ from RFP.
+
+#### What was decided
+The formal **Corvo Procurement Policy v5.0** is the binding source of truth. The engine strictly implements:
+- Requirement value $< \text{INR 10,00,000}$: Route to `RFQ` with 3 suggested suppliers.
+- Requirement value $\ge \text{INR 10,00,000}$: Route to `RFP` with 5 suggested suppliers.
+
+---
+
+### 2.12 Zero Code-Change Policy Amendment Guarantee
+
+#### What was noticed
+Ground Rule 5 states: *"No code changes after the build deadline. The amendment must work through your app's own policy-update feature. We check the commit history."*
+
+#### What was decided
+1. Procurement rules and thresholds are modeled as relational entities in PostgreSQL (`policy_versions` and `policy_rules`), evaluated dynamically by `ProcurementDecisionEngine`.
+2. When the v5.1 amendment is uploaded via the UI or API:
+   - Apache PDFBox extracts the text and parses modified thresholds (e.g., Spot PO limit increases to ₹3,00,000).
+   - The user reviews the proposal and clicks "Approve & Activate".
+   - Version 5.1 is created, and future requirements are evaluated against the new thresholds immediately.
+3. Zero Java or TypeScript files are modified during or after policy activation. This is verified by automated test `PolicyAmendmentTest.java`.
+4. Between 10:00 AM and 12:00 noon on 19 Nov (the blind-test window), only the three requested output CSVs are committed to `submission/` (`decisions_run1.csv`, `decisions_run2.csv`, `preferred_suppliers_YYYYMMDD.csv`). No application code commits will be made.
