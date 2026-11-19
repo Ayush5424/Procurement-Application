@@ -209,4 +209,36 @@ Ground Rule 5 states: *"No code changes after the build deadline. The amendment 
    - The user reviews the proposal and clicks "Approve & Activate".
    - Version 5.1 is created, and future requirements are evaluated against the new thresholds immediately.
 3. Zero Java or TypeScript files are modified during or after policy activation. This is verified by automated test `PolicyAmendmentTest.java`.
-4. Between 10:00 AM and 12:00 noon on 19 Nov (the blind-test window), only the three requested output CSVs are committed to `submission/` (`decisions_run1.csv`, `decisions_run2.csv`, `preferred_suppliers_YYYYMMDD.csv`). No application code commits will be made.
+4. Between 10:00 AM and 12:00 noon on 19 Nov (the blind-test window), only the three requested output CSVs are committed to `submission/` (`Ayush_Abhinav__run1.csv`, `Ayush_Abhinav__run2.csv`, `Ayush_Abhinav__preferred.csv`). No application code commits will be made.
+
+---
+
+### 2.13 Blind Test Execution & Policy Amendment No. 1 (v5.1) Record
+
+#### Context & Ground Rules
+On November 19, 2026, the blind test kit was provided containing:
+1. `hidden_pr_batch.csv`: 190 purchase requisition lines raised between 23 Nov and 11 Dec 2026.
+2. `Corvo_Policy_Amendment_1_v5.1.pdf`: Amendment No. 1 to the procurement policy, effective 1 December 2026.
+
+Per the strict evaluation ground rules:
+- **Zero code changes** were made to the application codebase (no backend Java or frontend TypeScript modifications).
+- All evaluations, policy activations, and batch exports were executed directly on the live deployed web service (`https://cantill-procurement.onrender.com`).
+
+#### Amendment No. 1 Changes Implemented via App Policy Management
+1. **Clause A1 (Packaging Spot Limit):**
+   - For items in the *Packaging* category, the Spot PO threshold in rule 5.4 was reduced from ₹2,00,000 to ₹1,00,000.
+   - Packaging requirements $\ge \text{INR 1,00,000}$ are strictly routed to sourcing (`RFQ` or `RFP`).
+2. **Clause A2 (RFP Threshold):**
+   - The boundary between `RFQ` and formal `RFP` (rules 5.5 and 5.6) was reduced from ₹10,00,000 to ₹8,00,000.
+   - Sourcing requirements $< \text{INR 8,00,000}$ route to `RFQ` (3 suppliers); $\ge \text{INR 8,00,000}$ route to `RFP` (5 suppliers).
+3. **Clause A3 (New Rule 5.2A — Chakan Electrical Safety):**
+   - At the Chakan plant (`CHK1`), any requirement in the *Electrical Spares* category worth ₹50,000 or more must be sourced (`RFQ`, or `RFP` if $\ge \text{INR 8,00,000}$), even if it would otherwise qualify for an emergency or spot PO.
+   - An applicable rate contract PO (rule 5.2) remains permitted and takes precedence.
+
+#### Output Deliverables in `submission/`
+1. `Ayush_Abhinav__run1.csv`: Processed 190 PR lines under Policy Version 5.0.
+2. `Ayush_Abhinav__run2.csv`: Processed 190 PR lines after activating Policy Amendment No. 1 (Version 5.1). Key shifts observed:
+   - Packaging items between ₹1,00,000 and ₹2,00,000 (e.g., ITM-1042 Wooden Pallet PR-26-00671..673) shifted from Spot PO to RFQ sourcing.
+   - Sourcing requirements between ₹8,00,000 and ₹10,00,000 (e.g., ITM-1066 PR-26-00667) shifted from RFQ to RFP.
+   - CHK1 Electrical Spares $\ge \text{INR 50,000}$ without contracts (e.g., ITM-1029 PR-26-00676..677) routed to RFQ under Rule 5.2A.
+3. `Ayush_Abhinav__preferred.csv`: Complete top 3 preferred suppliers list evaluated as of 2026-12-01 across catalog items (`item_code,rank,supplier_id,reference_price`).
