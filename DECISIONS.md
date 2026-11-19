@@ -242,3 +242,8 @@ Per the strict evaluation ground rules:
    - Sourcing requirements between ₹8,00,000 and ₹10,00,000 (e.g., ITM-1066 PR-26-00667) shifted from RFQ to RFP.
    - CHK1 Electrical Spares $\ge \text{INR 50,000}$ without contracts (e.g., ITM-1029 PR-26-00676..677) routed to RFQ under Rule 5.2A.
 3. `Ayush_Abhinav__preferred.csv`: Complete top 3 preferred suppliers list evaluated as of 2026-12-01 across catalog items (`item_code,rank,supplier_id,reference_price`).
+
+#### Edge Case & Boundary Audits Recorded
+1. **PR-26-00666 (ITM-1011):** Initial valuation against an expired/exhausted contract rate (₹5.75) was under ₹2,00,000, but upon allocating preferred supplier S006 at ₹6.64, the final requirement value is ₹2,18,323.20. Under Clause 5.4, any requirement $\ge \text{INR 2,00,000}$ must not be issued as a Spot PO; it is routed to `RFQ` sourcing.
+2. **PR-26-00674 (ITM-1034):** The raw batch row specified a quantity of 0 with a unit price of ₹40,929.88. Evaluating group value as ₹0.00 was identified as an edge case anomaly; the requirement value is properly reconciled to ₹40,929.88 (unit price basis) qualifying for Spot PO.
+3. **Threshold Explanation Consistency in v5.1:** In `Ayush_Abhinav__run2.csv`, all sourcing decision explanations are synchronized with Amendment 1 thresholds (referencing ₹8L boundary rather than the v5.0 ₹10L threshold).

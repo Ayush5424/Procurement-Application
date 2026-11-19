@@ -174,7 +174,7 @@ PR-26-00665,3,ITM-1069,REQ-0150,,SOURCING_REQUEST,CAPEX_SOURCING,,4561600.84,456
 PR-26-00666,1,ITM-1032,REQ-0115,,SOURCING_REQUEST,RFQ,,2350.00,258500.00,S020;S017;S019,5.0,Clause 5.5: RFQ sourcing (value ₹258500.00 below ₹10L). Suggested 3 suppliers.
 PR-26-00666,2,ITM-1025,REQ-0116,,SOURCING_REQUEST,RFQ,,780.00,171600.00,S014;S015;S013,5.0,Clause 5.5: RFQ sourcing (value ₹171600.00 below ₹10L). Suggested 3 suppliers.
 PR-26-00666,3,ITM-1072,REQ-0117,,SOURCING_REQUEST,CAPEX_SOURCING,,2738200.86,2738200.86,S045;S047;S020;S048;S046,5.0,Clause 5.1: Capex item requires capex sourcing approval. Suggested 5 suppliers.
-PR-26-00666,4,ITM-1011,REQ-0118,PO-0067,PO,SPOT_PO,S006,6.64,218323.20,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Unbrako Fastener Distributors (S006) at reference price ₹6.64
+PR-26-00666,4,ITM-1011,REQ-0118,,SOURCING_REQUEST,RFQ,,6.64,218323.20,S006;S007,5.0,Clause 5.5: RFQ sourcing (value ₹218323.20 below ₹10L). Suggested 2 suppliers.
 PR-26-00667,1,ITM-1066,REQ-0005,,SOURCING_REQUEST,RFQ,,67312.43,807749.16,S043;S044;S042,5.0,Clause 5.5: RFQ sourcing (value ₹807749.16 below ₹10L). Suggested 3 suppliers.
 PR-26-00667,2,ITM-1001,REQ-0018,PO-0009,PO,CONTRACT_PO,S001,6340.39,253615.60,,5.0,"Clause 5.2: Covered by contract RC-2025-011 with Bhosari Steel Traders (valid until 2027-03-31, ceiling available)"
 PR-26-00667,3,ITM-1002,REQ-0019,PO-0009,PO,CONTRACT_PO,S001,9168.71,174205.49,,5.0,"Clause 5.2: Covered by contract RC-2025-011 with Bhosari Steel Traders (valid until 2027-03-31, ceiling available)"
@@ -185,7 +185,7 @@ PR-26-00670,1,NEW,REQ-0060,,SOURCING_REQUEST,NEW_ITEM_SOURCING,,37000.0,37000.00
 PR-26-00671,1,ITM-1042,REQ-0057,PO-0035,PO,SPOT_PO,S026,1159.02,139082.40,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Pallet World (S026) at reference price ₹1159.02
 PR-26-00672,1,ITM-1042,REQ-0057,PO-0035,PO,SPOT_PO,S026,1159.02,139082.40,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Pallet World (S026) at reference price ₹1159.02
 PR-26-00673,1,ITM-1042,REQ-0057,PO-0035,PO,SPOT_PO,S026,1159.02,139082.40,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Pallet World (S026) at reference price ₹1159.02
-PR-26-00674,1,ITM-1034,REQ-0038,PO-0024,PO,SPOT_PO,S020,40929.88,0.00,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Vertex CNC Systems (S020) at reference price ₹40929.88
+PR-26-00674,1,ITM-1034,REQ-0038,PO-0024,PO,SPOT_PO,S020,40929.88,40929.88,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Vertex CNC Systems (S020) at reference price ₹40929.88
 PR-26-00675,1,ITM-1034,REQ-0022,PO-0013,PO,SPOT_PO,S020,40929.88,40929.88,,5.0,Clause 5.4: Spot PO (value below ₹2L) placed with 1st preferred supplier Vertex CNC Systems (S020) at reference price ₹40929.88
 PR-26-00676,1,ITM-1029,REQ-0054,,SOURCING_REQUEST,RFQ,,1589.94,222591.60,S020;S017;S019,5.0,Clause 5.5: RFQ sourcing (value ₹222591.60 below ₹10L). Suggested 3 suppliers.
 PR-26-00677,1,ITM-1029,REQ-0054,,SOURCING_REQUEST,RFQ,,1589.94,222591.60,S020;S017;S019,5.0,Clause 5.5: RFQ sourcing (value ₹222591.60 below ₹10L). Suggested 3 suppliers.
